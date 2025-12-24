@@ -1,0 +1,217 @@
+/* Navbar specific styles */
+.navbar {
+  width: 100%;
+  padding: 1rem 5vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  position: relative;
+  z-index: 1000;
+}
+
+.navbar__toggle {
+  display: none;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: none;
+  border: none;
+}
+
+.navbar__toggle span {
+  width: 26px;
+  height: 2px;
+  background: var(--text-strong);
+  border-radius: 2px;
+}
+
+.navbar__links {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  margin: 0;
+  padding: 0;
+  flex-wrap: wrap;
+}
+
+.nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-soft);
+  font-weight: 500;
+  padding: 0.6rem 0.85rem;
+  border-radius: 999px;
+  transition: color 0.2s ease, background 0.2s ease;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.nav-link:hover, .nav-link:focus-visible {
+  color: var(--text-strong);
+  background: var(--surface-highlight);
+}
+
+.nav-link:focus-visible {
+  outline: 2px solid var(--text-strong);
+  outline-offset: 2px;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 220px;
+  padding: 0.5rem 0;
+  margin: 0.5rem 0 0;
+  list-style: none;
+  border-radius: 0.5rem;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-color);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(10px);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+}
+
+.dropdown.is-open {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.nested-dropdown {
+  top: -0.5rem;
+  left: 100%;
+  margin-left: 0.25rem;
+}
+
+.dropdown.main-dropdown {
+  left: 0;
+  top: 100%;
+}
+
+.has-nested {
+  position: relative;
+}
+
+.has-nested > .nav-link--nested {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.dropdown-arrow {
+  margin-left: 0.5rem;
+  font-size: 1.1em;
+  transition: transform 0.2s ease;
+}
+
+.has-nested[aria-expanded="true"] > .nav-link--nested .dropdown-arrow {
+  transform: rotate(90deg);
+}
+
+.nav-item[aria-expanded="true"] > .nav-link {
+  background: var(--surface-highlight);
+  color: var(--text-strong);
+}
+
+.dropdown .nav-link {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  border-radius: 0.25rem;
+  justify-content: flex-start;
+}
+
+.dropdown .nav-link:hover, .dropdown .nav-link:focus-visible {
+  background: var(--surface-highlight);
+  color: var(--text-strong);
+}
+
+@media (max-width: 960px) {
+  .navbar {
+    justify-content: space-between;
+  }
+
+  .navbar__toggle {
+    display: flex;
+    z-index: 1001;
+  }
+
+  .navbar__links {
+    position: fixed;
+    inset: 4.5rem 1rem auto;
+    flex-direction: column;
+    background: var(--surface-main);
+    padding: 1rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border-color);
+    transform-origin: top;
+    transform: scaleY(0.95);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .navbar__links.is-open {
+    opacity: 1;
+    transform: scaleY(1);
+    pointer-events: auto;
+  }
+
+  .nav-item {
+    width: 100%;
+  }
+
+  .nav-link {
+    width: 100%;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+  }
+
+  .dropdown {
+    position: static;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    box-shadow: none;
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+
+  .dropdown.is-open {
+    max-height: 1000px;
+    padding: 0.5rem 0 0.5rem 1rem;
+  }
+
+  .nested-dropdown {
+    margin-left: 1rem;
+  }
+}
