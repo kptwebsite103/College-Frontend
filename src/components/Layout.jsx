@@ -1,14 +1,39 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import TopHeader from './TopHeader/TopHeader';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { clearAuth, getAccessToken, getStoredUser } from '../state/auth.js';
+import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 export default function Layout({ children }) {
   const nav = useNavigate();
-  const token = getAccessToken();
-  const user = getStoredUser();
+  const { isLoaded, isSignedIn, currentUser, logout } = useAuth();
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    // Add class to body to remove padding on admin pages
+    document.body.classList.add('admin-page');
+    
+    // Cleanup when component unmounts
+    return () => {
+      document.body.classList.remove('admin-page');
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    const result = await logout();
+    if (result.success) {
+      nav('/');
+    }
+  };
+
+  if (!isLoaded) {
+    return <div>Loading...</div>;
+  }
 
   return (
-    <div className="app-shell">
+    <>
+      <TopHeader />
+      <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="sidebar-brand-mark">KPT</div>
@@ -20,24 +45,25 @@ export default function Layout({ children }) {
 
         <div className="sidebar-profile">
           <div className="sidebar-avatar" aria-hidden="true">
-            {user && (user.name || user.email) ? String(user.name || user.email).slice(0, 1).toUpperCase() : 'A'}
+            {currentUser && (currentUser.firstName || currentUser.lastName || currentUser.email)
+              ? String(currentUser.firstName || currentUser.lastName || currentUser.email).slice(0, 1).toUpperCase()
+              : 'A'}
           </div>
-          <div>
-            <div className="sidebar-profile-name">{user && (user.name || user.email) ? user.name || user.email : 'Admin'}</div>
-            <div className="sidebar-profile-role">{token ? 'Signed in' : 'Guest'}</div>
+          <div className="sidebar-user-info">
+            <div className="sidebar-profile-name">
+              {currentUser?.firstName || currentUser?.lastName || currentUser?.email || 'Admin'}
+            </div>
+            <div className="sidebar-profile-email">
+              {currentUser?.email || 'admin@kpt.edu'}
+            </div>
+            <div className="sidebar-profile-role">{isSignedIn ? t('admin.administrator') : t('admin.guest')}</div>
           </div>
         </div>
 
         <div className="sidebar-actions">
-          {token ? (
-            <button
-              className="sidebar-logout"
-              onClick={() => {
-                clearAuth();
-                nav('/login');
-              }}
-            >
-              Logout
+          {isSignedIn ? (
+            <button className="sidebar-logout" onClick={handleLogout}>
+              {t('admin.logout')}
             </button>
           ) : (
             <div className="sidebar-auth-links">
@@ -48,13 +74,13 @@ export default function Layout({ children }) {
         </div>
 
         <nav className="sidebar-nav">
-          <div className="sidebar-section-title">Main Menu</div>
-          <NavLink to="/" end className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>Dashboard</NavLink>
-          <NavLink to="/pages" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>Pages</NavLink>
-          <NavLink to="/menus" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>Menus</NavLink>
-          <NavLink to="/departments" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>Departments</NavLink>
-          <NavLink to="/me" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>Me</NavLink>
-          <NavLink to="/health" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>Health</NavLink>
+          <div className="sidebar-section-title">{t('admin.main_menu')}</div>
+          <NavLink to="/admin" end className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.dashboard')}</NavLink>
+          <NavLink to="/admin/pages" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.pages')}</NavLink>
+          <NavLink to="/admin/menus" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.menus')}</NavLink>
+          <NavLink to="/admin/departments" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.departments')}</NavLink>
+          <NavLink to="/admin/me" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.me')}</NavLink>
+          <NavLink to="/admin/health" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.health')}</NavLink>
         </nav>
 
         <div className="sidebar-footer">© KPT Website</div>
@@ -63,9 +89,9 @@ export default function Layout({ children }) {
       <div className="main">
         <div className="topbar">
           <div className="topbar-left">
-            <NavLink to="/pages" className={({ isActive }) => `topbar-pill${isActive ? ' active' : ''}`}>Media</NavLink>
-            <NavLink to="/departments" className={({ isActive }) => `topbar-pill${isActive ? ' active' : ''}`}>Department Settings</NavLink>
-            <NavLink to="/menus" className={({ isActive }) => `topbar-pill${isActive ? ' active' : ''}`}>Home Page Section show/hide</NavLink>
+            <NavLink to="/admin/pages" className={({ isActive }) => `topbar-pill${isActive ? ' active' : ''}`}>{t('topbar.media')}</NavLink>
+            <NavLink to="/admin/departments" className={({ isActive }) => `topbar-pill${isActive ? ' active' : ''}`}>{t('topbar.department_settings')}</NavLink>
+            <NavLink to="/admin/menus" className={({ isActive }) => `topbar-pill${isActive ? ' active' : ''}`}>{t('topbar.home_page_sections')}</NavLink>
           </div>
           <div className="topbar-right">
             <button className="topbar-visit" onClick={() => nav('/')}>Visit Site</button>
@@ -74,6 +100,7 @@ export default function Layout({ children }) {
 
         <main className="main-content">{children}</main>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

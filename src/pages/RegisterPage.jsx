@@ -1,64 +1,62 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { register } from '../api/auth.js';
-import { setAuth } from '../state/auth.js';
 
 export default function RegisterPage() {
-  const nav = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [firstName, setFirstName] = React.useState('');
-  const [lastName, setLastName] = React.useState('');
+  useEffect(() => {
+    document.body.classList.add('auth-page');
+    return () => document.body.classList.remove('auth-page');
+  }, []);
 
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState(null);
-
-  async function onSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
-
     try {
-      const res = await register({ email, password, firstName, lastName });
-      setAuth(res);
-      nav('/');
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: email, password, firstName, lastName })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setError(err.message || 'Registration failed');
+        return;
+      }
+      navigate('/login');
     } catch (err) {
-      setError(err);
-    } finally {
-      setLoading(false);
+      setError(err.message || 'Registration failed');
     }
-  }
+  };
 
   return (
-    <div className="card" style={{ maxWidth: 520 }}>
-      <div style={{ fontWeight: 700, marginBottom: 10 }}>Register</div>
-      <form onSubmit={onSubmit}>
-        <div style={{ marginBottom: 10 }}>
-          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>First name</div>
-          <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="first name" />
-        </div>
-        <div style={{ marginBottom: 10 }}>
-          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Last name</div>
-          <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="last name" />
-        </div>
-        <div style={{ marginBottom: 10 }}>
-          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Email</div>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email" />
-        </div>
-        <div style={{ marginBottom: 10 }}>
-          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Password</div>
-          <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password" type="password" />
-        </div>
-
-        {error ? <div className="error" style={{ marginBottom: 10 }}>{error.message}</div> : null}
-
-        <button disabled={loading} type="submit">{loading ? 'Creating…' : 'Create account'}</button>
+    <div className="auth-container">
+      <form className="auth-form" onSubmit={handleSubmit}>
+        <h2>Register</h2>
+        {error && <div className="auth-error">{error}</div>}
+        <label>
+          First name
+          <input value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+        </label>
+        <label>
+          Last name
+          <input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+        </label>
+        <label>
+          Username
+          <input value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </label>
+        <label>
+          Password
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        </label>
+        <button type="submit">Register</button>
       </form>
-
-      <div className="muted" style={{ marginTop: 10, fontSize: 12 }}>
-        Uses <code>POST /api/auth/register</code>.
-      </div>
     </div>
   );
 }

@@ -1,52 +1,47 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { login } from '../api/auth.js';
-import { setAuth } from '../state/auth.js';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginPage() {
-  const nav = useNavigate();
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState(null);
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  async function onSubmit(e) {
+  useEffect(() => {
+    document.body.classList.add('auth-page');
+    return () => document.body.classList.remove('auth-page');
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
-
-    try {
-      const res = await login({ email, password });
-      setAuth(res);
-      nav('/');
-    } catch (err) {
-      setError(err);
-    } finally {
-      setLoading(false);
+    const res = await login(email, password);
+    if (res.success) {
+      const from = location.state?.from?.pathname || '/admin';
+      navigate(from, { replace: true });
+    } else {
+      setError(res.error || 'Login failed');
     }
-  }
+  };
 
   return (
-    <div className="card" style={{ maxWidth: 520 }}>
-      <div style={{ fontWeight: 700, marginBottom: 10 }}>Login</div>
-      <form onSubmit={onSubmit}>
-        <div style={{ marginBottom: 10 }}>
-          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Email</div>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email" />
-        </div>
-        <div style={{ marginBottom: 10 }}>
-          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Password</div>
-          <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password" type="password" />
-        </div>
-
-        {error ? <div className="error" style={{ marginBottom: 10 }}>{error.message}</div> : null}
-
-        <button disabled={loading} type="submit">{loading ? 'Logging in…' : 'Login'}</button>
+    <div className="auth-container">
+      <form className="auth-form" onSubmit={handleSubmit}>
+        <h2>Admin Login</h2>
+        {error && <div className="auth-error">{error}</div>}
+        <label>
+          Username
+          <input value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </label>
+        <label>
+          Password
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        </label>
+        <button type="submit">Sign In</button>
       </form>
-
-      <div className="muted" style={{ marginTop: 10, fontSize: 12 }}>
-        Uses <code>POST /api/auth/login</code> and stores <code>accessToken</code> in localStorage.
-      </div>
     </div>
   );
 }
