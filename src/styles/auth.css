@@ -1,10 +1,20 @@
 .auth-container {
-  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: #f5f7fa;
-  padding: 2rem;
+  padding: 1rem 2rem;
+  min-height: 100vh;
+}
+
+.auth-form {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
 }
 
 .auth-card {
@@ -18,6 +28,13 @@
 }
 
 .auth-card h2 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: #1a1a1a;
+  text-align: center;
+}
+
+.auth-form h2 {
   margin-top: 0;
   margin-bottom: 1.5rem;
   color: #1a1a1a;
@@ -107,4 +124,25 @@
   margin-bottom: 1.5rem;
   font-size: 0.875rem;
   border-left: 4px solid #dc2626;
+}
+/* Hide navbar and header on auth pages */
+body.auth-page .site-header,
+body.auth-page .top-header,
+body.auth-page nav,
+body.auth-page header:not(.auth-container header) {
+  display: none !important;
+}
+
+/* Remove extra spacing on auth pages */
+body.auth-page {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+body.auth-page #root {
+  height: 100vh;
+  margin: 0;
+  padding: 0;
 }
