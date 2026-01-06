@@ -21,20 +21,78 @@ async function parseJsonSafe(res) {
 }
 
 export async function apiRequest(path, { method = 'GET', body, headers } = {}) {
-  const token = getAccessToken();
-  const finalHeaders = {
-    ...(body ? { 'Content-Type': 'application/json' } : {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(headers || {}),
-  };
-
+  let token = localStorage.getItem('accessToken'); // Use same key as AuthContext
+  
   const res = await fetch(joinUrl(API_BASE, path), {
     method,
-    headers: finalHeaders,
+    headers: {
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(headers || {}),
+    },
     body: body ? JSON.stringify(body) : undefined,
   });
 
   const data = await parseJsonSafe(res);
+
+  // Handle 401 Unauthorized - try to refresh token
+  if (res.status === 401 && data?.message?.includes('token')) {
+    console.log('Token expired, attempting refresh...');
+    
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (refreshToken) {
+      try {
+        const refreshResponse = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ refreshToken })
+        });
+        
+        const refreshData = await parseJsonSafe(refreshResponse);
+        
+        if (refreshResponse.ok && refreshData.accessToken) {
+          // Store new tokens
+          localStorage.setItem('accessToken', refreshData.accessToken);
+          if (refreshData.refreshToken) {
+            localStorage.setItem('refreshToken', refreshData.refreshToken);
+          }
+          
+          // Retry original request with new token
+          const newToken = refreshData.accessToken;
+          const finalHeaders = {
+            ...(body ? { 'Content-Type': 'application/json' } : {}),
+            ...(newToken ? { Authorization: `Bearer ${newToken}` } : {}),
+            ...(headers || {}),
+          };
+          
+          const retryRes = await fetch(joinUrl(API_BASE, path), {
+            method,
+            headers: finalHeaders,
+            body: body ? JSON.stringify(body) : undefined,
+          });
+          
+          const retryData = await parseJsonSafe(retryRes);
+          if (!retryRes.ok) {
+            const message = retryData && typeof retryData === 'object' && retryData.message ? retryData.message : `Request failed (${retryRes.status})`;
+            const err = new Error(message);
+            err.status = retryRes.status;
+            err.data = retryData;
+            throw err;
+          }
+          
+          return retryData;
+        }
+      } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
+        // Clear tokens and redirect to login
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        window.location.href = '/login';
+      }
+    }
+  }
 
   if (!res.ok) {
     const message = data && typeof data === 'object' && data.message ? data.message : `Request failed (${res.status})`;

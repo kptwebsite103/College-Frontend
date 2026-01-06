@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
         const userId = decoded.userId || decoded.sub;
         setAccessToken(token);
         setIsSignedIn(true);
-        setCurrentUser({ id: userId, username: decoded.username || null, roles: decoded.roles || ['user'] });
+        setCurrentUser({ id: userId, username: decoded.username || null, email: decoded.email || null, roles: decoded.roles || ['user'] });
       } else {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }) => {
         const userId = decoded.userId || decoded.sub;
         setAccessToken(data.accessToken);
         setIsSignedIn(true);
-        setCurrentUser({ id: userId, username: decoded.username || null, roles: decoded.roles || ['user'] });
+        setCurrentUser({ id: userId, username: decoded.username || null, email: decoded.email || null, roles: decoded.roles || ['user'] });
         return { success: true };
       }
       return { success: false, error: 'Invalid response from server' };

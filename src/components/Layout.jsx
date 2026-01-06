@@ -35,30 +35,37 @@ export default function Layout({ children }) {
       <TopHeader />
       <div className="app-shell">
       <aside className="sidebar">
-        <div className="sidebar-brand">
-          <div className="sidebar-brand-mark">KPT</div>
-          <div className="sidebar-brand-text">
-            <div className="sidebar-brand-title">KPT Website</div>
-            <div className="sidebar-brand-subtitle">Admin Panel</div>
-          </div>
-        </div>
-
         <div className="sidebar-profile">
-          <div className="sidebar-avatar" aria-hidden="true">
-            {currentUser && (currentUser.firstName || currentUser.lastName || currentUser.email)
-              ? String(currentUser.firstName || currentUser.lastName || currentUser.email).slice(0, 1).toUpperCase()
+          <div className="sidebar-profile-avatar">
+            {currentUser && (currentUser.firstName || currentUser.lastName || currentUser.username || currentUser.email)
+              ? String(currentUser.firstName || currentUser.lastName || currentUser.username || currentUser.email).slice(0, 1).toUpperCase()
               : 'A'}
           </div>
           <div className="sidebar-user-info">
             <div className="sidebar-profile-name">
-              {currentUser?.firstName || currentUser?.lastName || currentUser?.email || 'Admin'}
+              {currentUser?.firstName || currentUser?.lastName || currentUser?.username || currentUser?.email || 'Admin'}
             </div>
             <div className="sidebar-profile-email">
               {currentUser?.email || 'admin@kpt.edu'}
             </div>
-            <div className="sidebar-profile-role">{isSignedIn ? t('admin.administrator') : t('admin.guest')}</div>
+            <div className="sidebar-profile-role">
+              {isSignedIn && currentUser?.roles?.length > 0
+                ? currentUser.roles.map(role => role.charAt(0).toUpperCase() + role.slice(1)).join(', ')
+                : (isSignedIn ? 'Administrator' : 'Guest')
+              }
+            </div>
           </div>
         </div>
+
+        <nav className="sidebar-nav">
+          <div className="sidebar-section-title">{t('admin.main_menu')}</div>
+          <NavLink to="/admin" end className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.dashboard')}</NavLink>
+          <NavLink to="/admin/pages" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.pages')}</NavLink>
+          <NavLink to="/admin/menus" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.menus')}</NavLink>
+          <NavLink to="/admin/departments" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.departments')}</NavLink>
+          <NavLink to="/admin/me" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.me')}</NavLink>
+          <NavLink to="/admin/health" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.health')}</NavLink>
+        </nav>
 
         <div className="sidebar-actions">
           {isSignedIn ? (
@@ -72,16 +79,6 @@ export default function Layout({ children }) {
             </div>
           )}
         </div>
-
-        <nav className="sidebar-nav">
-          <div className="sidebar-section-title">{t('admin.main_menu')}</div>
-          <NavLink to="/admin" end className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.dashboard')}</NavLink>
-          <NavLink to="/admin/pages" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.pages')}</NavLink>
-          <NavLink to="/admin/menus" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.menus')}</NavLink>
-          <NavLink to="/admin/departments" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.departments')}</NavLink>
-          <NavLink to="/admin/me" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.me')}</NavLink>
-          <NavLink to="/admin/health" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.health')}</NavLink>
-        </nav>
 
         <div className="sidebar-footer">© KPT Website</div>
       </aside>

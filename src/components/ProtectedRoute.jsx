@@ -3,9 +3,9 @@ import { useAuth } from '../contexts/AuthContext';
 
 export default function ProtectedRoute({ children, adminOnly = false }) {
   const { isLoaded, isSignedIn, currentUser } = useAuth();
-  const isAdmin = (Array.isArray(currentUser?.roles) ? currentUser.roles.map(r => String(r).toLowerCase()).includes('admin') : false) ||
-                   (currentUser?.role && String(currentUser.role).toLowerCase() === 'admin') ||
-                   (currentUser?.role && String(currentUser.role).toLowerCase() === 'super-admin');
+  const isAdmin = (Array.isArray(currentUser?.roles) ? 
+    currentUser.roles.map(r => String(r).toLowerCase()).some(role => ['admin', 'super-admin', 'creator'].includes(role)) : false) ||
+                   (currentUser?.role && ['admin', 'super-admin', 'creator'].includes(String(currentUser.role).toLowerCase()));
   const location = useLocation();
 
   // Show loading state while Clerk is loading

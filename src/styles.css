@@ -26,6 +26,10 @@ body {
   margin: 0;
 }
 
+body.admin-page {
+  padding-top: 0;
+}
+
 html, body, #root {
   height: 100%;
 }
@@ -250,33 +254,63 @@ pre {
 }
 
 .sidebar-profile {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 12px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  padding: 20px;
+  margin: 16px;
   display: flex;
-  gap: 10px;
+  flex-direction: column;
   align-items: center;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
 }
 
-.sidebar-avatar {
-  width: 46px;
-  height: 46px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+.sidebar-profile-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
+  font-weight: 700;
+  font-size: 20px;
+  color: white;
+  margin-bottom: 12px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.sidebar-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
 }
 
 .sidebar-profile-name {
-  font-weight: 700;
+  font-weight: 600;
+  font-size: 16px;
+  color: #ffffff;
+  margin-bottom: 2px;
+}
+
+.sidebar-profile-email {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 2px;
 }
 
 .sidebar-profile-role {
   font-size: 12px;
-  color: rgba(229, 231, 235, 0.7);
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 12px;
+  border-radius: 12px;
+  display: inline-block;
+  margin-top: 4px;
 }
 
 .sidebar-actions {
@@ -393,6 +427,7 @@ pre {
 
 .main-content {
   padding: 16px;
+  margin-top: 70px;
 }
 
 .page {
