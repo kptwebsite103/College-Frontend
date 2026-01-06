@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 export default function LoginPage() {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-    const res = await login(username, password);
+    const res = await login(username, email, password);
     if (res.success) {
       const from = location.state?.from?.pathname || '/admin';
       navigate(from, { replace: true });
@@ -34,7 +35,11 @@ export default function LoginPage() {
         {error && <div className="auth-error">{error}</div>}
         <label>
           Username
-          <input value={username} onChange={(e) => setUsername(e.target.value)} required />
+          <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required />
+        </label>
+        <label>
+          Email
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </label>
         <label>
           Password

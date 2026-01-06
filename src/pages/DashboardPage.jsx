@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { getAccessToken, getStoredUser } from '../state/auth.js';
 import { listDepartments, listMenus, listPages } from '../api/resources.js';
+import UserManagementContent from './UserManagementContent.jsx';
 
 export default function DashboardPage() {
   const token = getAccessToken();
@@ -9,6 +10,7 @@ export default function DashboardPage() {
 
   const [loading, setLoading] = React.useState(false);
   const [counts, setCounts] = React.useState({ pages: null, menus: null, departments: null });
+  const [showUserManagement, setShowUserManagement] = React.useState(false);
 
   async function loadCounts() {
     setLoading(true);
@@ -78,9 +80,9 @@ export default function DashboardPage() {
             <div className="tile-title">User</div>
             <div className="tile-subtitle">Management</div>
           </div>
-          <Link className="tile-action" to="/me">
+          <button className="tile-action" onClick={() => setShowUserManagement(true)}>
             Open
-          </Link>
+          </button>
         </div>
 
         <div className="tile">
@@ -90,16 +92,6 @@ export default function DashboardPage() {
           </div>
           <Link className="tile-action" to="/pages">
             Manage
-          </Link>
-        </div>
-
-        <div className="tile">
-          <div>
-            <div className="tile-title">Translator</div>
-            <div className="tile-subtitle">Language tools</div>
-          </div>
-          <Link className="tile-action" to="/menus">
-            Open
           </Link>
         </div>
 
@@ -120,6 +112,16 @@ export default function DashboardPage() {
         <Link className="dash-tab blue" to="/departments">Feedbacks</Link>
         <Link className="dash-tab dark" to="/menus">+ Add Social Media</Link>
       </div>
+
+      {showUserManagement && (
+        <div className="user-management-inline">
+          <div className="user-management-inline-header">
+            <h2>User Management</h2>
+            <button className="close-btn" onClick={() => setShowUserManagement(false)}>×</button>
+          </div>
+          <UserManagementContent />
+        </div>
+      )}
     </div>
   );
 }

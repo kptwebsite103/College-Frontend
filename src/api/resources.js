@@ -15,3 +15,14 @@ export function listMenus() {
 export function listDepartments() {
   return apiRequest('/api/departments');
 }
+
+export function listUsers() {
+  return apiRequest('/api/users');
+}
+
+export function createUser(userData) {
+  return apiRequest('/api/users', {
+    method: 'POST',
+    body: JSON.stringify(userData)
+  });
+}

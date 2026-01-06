@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
         const userId = decoded.userId || decoded.sub;
         setAccessToken(token);
         setIsSignedIn(true);
-        setCurrentUser({ id: userId, username: decoded.username || decoded.username || null, roles: decoded.roles || [] });
+        setCurrentUser({ id: userId, username: decoded.username || null, roles: decoded.roles || ['user'] });
       } else {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
@@ -46,12 +46,12 @@ export const AuthProvider = ({ children }) => {
     setIsLoaded(true);
   }, []);
 
-  const login = async (username, password) => {
+  const login = async (username, email, password) => {
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username, email, password })
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }) => {
         const userId = decoded.userId || decoded.sub;
         setAccessToken(data.accessToken);
         setIsSignedIn(true);
-        setCurrentUser({ id: userId, username: decoded.username || decoded.username || null, roles: decoded.roles || [] });
+        setCurrentUser({ id: userId, username: decoded.username || null, roles: decoded.roles || ['user'] });
         return { success: true };
       }
       return { success: false, error: 'Invalid response from server' };

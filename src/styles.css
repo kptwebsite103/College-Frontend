@@ -364,9 +364,6 @@ pre {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  position: sticky;
-  top: 0;
-  z-index: 10;
 }
 
 .topbar-left {
@@ -543,10 +540,18 @@ pre {
 
 .tile-action {
   text-decoration: none;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid #e5e7eb;
   background: #f9fafb;
+  color: #007bff;
+  font-weight: 700;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+  text-align: center;
 }
 
 .tile-action:hover {
@@ -582,4 +587,57 @@ pre {
 
 .dash-tab.dark {
   background: #0f172a;
+}
+
+/* Ensure proper alignment for all pages */
+.user-info {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  flex-wrap: nowrap !important;
+  flex-direction: row !important;
+}
+
+.login-button.logged-in,
+.logout-button {
+  display: inline-flex !important;
+  white-space: nowrap !important;
+}
+
+/* Admin Page Specific Styles */
+body.admin-page .top-header {
+  position: fixed;
+  top: 0;
+}
+
+body.admin-page .site-header {
+  top: 50px !important;
+}
+
+body.admin-page .app-shell {
+  margin-top: 0;
+}
+
+body.admin-page .sidebar {
+  position: fixed;
+  top: 50px;
+  left: 0;
+  height: calc(100vh - 50px);
+  z-index: 1000;
+}
+
+body.admin-page .topbar {
+  position: fixed;
+  top: 50px;
+  left: 270px;
+  right: 0;
+  z-index: 1000;
+}
+
+body.admin-page .main {
+  margin-left: 270px;
+}
+
+body.admin-page .main-content {
+  padding-top: 50px; /* Adjust for fixed topbar */
 }
