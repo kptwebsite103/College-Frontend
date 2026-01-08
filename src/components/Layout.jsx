@@ -37,9 +37,32 @@ export default function Layout({ children }) {
       <aside className="sidebar">
         <div className="sidebar-profile">
           <div className="sidebar-profile-avatar">
-            {currentUser && (currentUser.firstName || currentUser.lastName || currentUser.username || currentUser.email)
-              ? String(currentUser.firstName || currentUser.lastName || currentUser.username || currentUser.email).slice(0, 1).toUpperCase()
-              : 'A'}
+            {(() => {
+              const userRole = currentUser?.roles?.[0]?.toLowerCase() || 'admin';
+              const avatarPath = (userRole === 'super-admin' || userRole === 'admin' || userRole === 'creator') ? `/avatars/${userRole}.jpeg` : `/avatars/${userRole}.png`;
+              
+              try {
+                return (
+                  <img 
+                    src={avatarPath} 
+                    alt={`${userRole} avatar`}
+                    onError={(e) => {
+                      // Fallback to initials if image doesn't exist
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                );
+              } catch (error) {
+                return null;
+              }
+            })()}
+            <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', backgroundColor: '#4f46e5', color: 'white', fontSize: '18px', fontWeight: 'bold' }}>
+              {currentUser && (currentUser.firstName || currentUser.lastName || currentUser.username || currentUser.email)
+                ? String(currentUser.firstName || currentUser.lastName || currentUser.username || currentUser.email).slice(0, 1).toUpperCase()
+                : 'A'}
+            </div>
           </div>
           <div className="sidebar-user-info">
             <div className="sidebar-profile-name">
@@ -68,20 +91,9 @@ export default function Layout({ children }) {
         </nav>
 
         <div className="sidebar-actions">
-          {isSignedIn ? (
-            <button className="sidebar-logout" onClick={handleLogout}>
-              {t('admin.logout')}
-            </button>
-          ) : (
-            <div className="sidebar-auth-links">
-              <NavLink to="/login" className="sidebar-logout">Login</NavLink>
-              <NavLink to="/register" className="sidebar-logout secondary">Register</NavLink>
-            </div>
-          )}
         </div>
 
-        <div className="sidebar-footer">© KPT Website</div>
-      </aside>
+        </aside>
 
       <div className="main">
         <div className="topbar">
