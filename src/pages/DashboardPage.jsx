@@ -18,7 +18,26 @@ export default function DashboardPage() {
       const results = await Promise.allSettled([listPages(), listMenus(), listDepartments(), getUserCount()]);
       
       const pages = results[0].status === 'fulfilled' && Array.isArray(results[0].value) ? results[0].value.length : null;
-      const menus = results[1].status === 'fulfilled' && Array.isArray(results[1].value) ? results[1].value.length : null;
+      
+      // For menus, check localStorage first (like DynamicNavbar does)
+      let menus = null;
+      try {
+        const savedMenus = localStorage.getItem('menus');
+        if (savedMenus) {
+          const menusData = JSON.parse(savedMenus);
+          const approvedMenus = menusData.filter(menu => menu.status === 'Approved');
+          menus = approvedMenus.length;
+        } else if (results[1].status === 'fulfilled' && Array.isArray(results[1].value)) {
+          // Fallback to API response
+          menus = results[1].value.length;
+        }
+      } catch (localStorageError) {
+        console.error('Error reading menus from localStorage:', localStorageError);
+        if (results[1].status === 'fulfilled' && Array.isArray(results[1].value)) {
+          menus = results[1].value.length;
+        }
+      }
+      
       const departments = results[2].status === 'fulfilled' && Array.isArray(results[2].value) ? results[2].value.length : null;
       const users = results[3].status === 'fulfilled' && results[3].value && typeof results[3].value.count === 'number' ? results[3].value.count : null;
 
@@ -30,6 +49,11 @@ export default function DashboardPage() {
 
   React.useEffect(() => {
     loadCounts();
+    
+    // Set up periodic polling for live updates
+    const interval = setInterval(loadCounts, 5000); // Refresh every 5 seconds
+    
+    return () => clearInterval(interval); // Cleanup on unmount
   }, []);
 
   // Animate counts when they change

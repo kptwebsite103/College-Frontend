@@ -83,8 +83,8 @@ export default function Layout({ children }) {
         <nav className="sidebar-nav">
           <div className="sidebar-section-title">{t('admin.main_menu')}</div>
           <NavLink to="/admin" end className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.dashboard')}</NavLink>
+          <NavLink to="/admin/menus" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.navbar')}</NavLink>
           <NavLink to="/admin/pages" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.pages')}</NavLink>
-          <NavLink to="/admin/menus" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.menus')}</NavLink>
           <NavLink to="/admin/departments" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.departments')}</NavLink>
           <NavLink to="/admin/me" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.me')}</NavLink>
           <NavLink to="/admin/health" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>{t('admin.health')}</NavLink>

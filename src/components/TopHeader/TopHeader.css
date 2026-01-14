@@ -6,6 +6,7 @@
   left: 0;
   right: 0;
   width: 100%;
+  height: 64px; /* Explicit height: 12px padding + 40px button + 12px padding */
   z-index: 6000;
   border-bottom: 1px solid #4a5568;
 }
@@ -43,6 +44,18 @@
   border-color: #718096;
   color: #ffffff;
   font-weight: 600;
+  height: 40px;
+  min-height: 40px;
+  max-height: 40px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .login-button.logged-in:hover {
@@ -65,6 +78,16 @@
   cursor: pointer;
   transition: all 0.2s ease;
   text-decoration: none;
+  height: 40px;
+  min-height: 40px;
+  max-height: 40px;
+  box-sizing: border-box;
+  justify-content: center;
+  min-width: 100px;
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .logout-button:hover {
@@ -236,7 +259,7 @@
 
 /* Adjust existing navbar position */
 .site-header {
-  top: 50px !important; /* Height of top header */
+  top: 70px !important; /* Height of top header with proper clearance */
 }
 
 /* Responsive Design */
@@ -249,6 +272,13 @@
   .language-button {
     padding: 0.5rem 0.75rem;
     font-size: 0.8rem;
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
   
   .language-dropdown {
@@ -271,6 +301,13 @@
   .language-button {
     padding: 0.5rem;
     min-width: auto;
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
   
   .language-dropdown {

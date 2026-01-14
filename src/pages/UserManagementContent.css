@@ -184,33 +184,47 @@
 }
 
 .edit-btn {
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 6px;
-  padding: 6px 8px;
+  background: transparent;
+  border: none;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s ease;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background 0.2s ease;
+}
+
+.edit-btn img {
+  transition: filter 0.2s ease;
 }
 
 .edit-btn:hover {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.3);
+  background-color: #f3f4f6;
+}
+
+.edit-btn:hover img {
+  filter: invert(38%) sepia(95%) saturate(2066%) hue-rotate(200deg) brightness(98%) contrast(106%);
+  transition: filter 0.2s ease;
 }
 
 .delete-btn {
-  background: rgba(220, 53, 69, 0.1);
-  border: 1px solid rgba(220, 53, 69, 0.2);
-  border-radius: 6px;
-  padding: 6px 8px;
+  background: transparent;
+  border: none;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s ease;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background 0.2s ease;
+}
+
+.delete-btn img {
+  transition: filter 0.2s ease;
 }
 
 .delete-btn:hover {
-  background: rgba(220, 53, 69, 0.2);
-  border-color: rgba(220, 53, 69, 0.3);
+  background-color: #f3f4f6;
+}
+
+.delete-btn:hover img {
+  filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%);
+  transition: filter 0.2s ease;
 }
 
 .user-card:hover {

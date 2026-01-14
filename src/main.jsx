@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
-import './i18n'; // Initialize i18n
+import './i18n/index.js'; // Initialize i18n
 import App from './App.jsx';
 import './styles.css';
 
