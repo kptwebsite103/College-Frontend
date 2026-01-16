@@ -108,7 +108,7 @@ export default function App() {
       <Route path="/:route" element={<PublicLayoutWrapper><DynamicPage /></PublicLayoutWrapper>} />
 
       {/* 404 Route */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>
   );
 }
