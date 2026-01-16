@@ -11,7 +11,7 @@ import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import MePage from './pages/MePage.jsx';
 import PagesPage from './pages/PagesPage.jsx';
-import MenusPage from './pages/MenusPage.jsx';
+import MenusPage from './pages/menusPage.jsx';
 import DepartmentsPage from './pages/DepartmentsPage.jsx';
 import DynamicPage from './pages/DynamicPage.jsx';
 
