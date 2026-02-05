@@ -1,0 +1,316 @@
+/* Top Header Styles */
+.top-header {
+  background: #2d3748;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 64px; /* Explicit height: 12px padding + 40px button + 12px padding */
+  z-index: 6000;
+  border-bottom: 1px solid #4a5568;
+}
+
+.top-header-container {
+  max-width: 100%;
+  padding: 0.75rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.top-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.top-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* User Info Container */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.login-button.logged-in {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #718096;
+  color: #ffffff;
+  font-weight: 600;
+  height: 40px;
+  min-height: 40px;
+  max-height: 40px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.login-button.logged-in:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #a0aec0;
+}
+
+/* Logout Button */
+.logout-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: transparent;
+  color: #e53e3e;
+  border: 1px solid #e53e3e;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  height: 40px;
+  min-height: 40px;
+  max-height: 40px;
+  box-sizing: border-box;
+  justify-content: center;
+  min-width: 100px;
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.logout-button:hover {
+  background: #e53e3e;
+  color: #ffffff;
+  border-color: #c53030;
+}
+
+.logout-button:focus {
+  outline: 2px solid #fc8181;
+  outline-offset: 2px;
+}
+
+/* Login Button */
+.login-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid #4a5568;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.login-button:hover {
+  background: #4a5568;
+  border-color: #718096;
+}
+
+.login-button:focus {
+  outline: 2px solid #63b3ed;
+  outline-offset: 2px;
+}
+
+.login-icon {
+  flex-shrink: 0;
+}
+
+/* Language Selector */
+.language-selector {
+  position: relative;
+}
+
+.language-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid #4a5568;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.language-button:hover {
+  background: #4a5568;
+  border-color: #718096;
+}
+
+.language-button:focus {
+  outline: 2px solid #63b3ed;
+  outline-offset: 2px;
+}
+
+.language-icon {
+  flex-shrink: 0;
+}
+
+.dropdown-arrow {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.language-button[aria-expanded="true"] .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+/* Language Selector - EN/KN Buttons */
+.language-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.language-button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid #718096;
+  color: #ffffff;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 2.5rem;
+  text-align: center;
+}
+
+.language-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #a0aec0;
+}
+
+.language-button.active {
+  background: #3b82f6;
+  border-color: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.language-button:focus {
+  outline: 2px solid #63b3ed;
+  outline-offset: 2px;
+}
+
+/* Language Dropdown */
+.language-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: #2d3748;
+  border: 1px solid #4a5568;
+  border-radius: 0.375rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  min-width: 120px;
+  z-index: 7000;
+  overflow: hidden;
+}
+
+.language-option {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  color: #ffffff;
+  border: none;
+  text-align: left;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.language-option:hover {
+  background: #4a5568;
+}
+
+.language-option.active {
+  background: #4a5568;
+  font-weight: 600;
+}
+
+.language-option:focus {
+  outline: 2px solid #63b3ed;
+  outline-offset: -2px;
+}
+
+/* Adjust existing navbar position */
+.site-header {
+  top: 70px !important; /* Height of top header with proper clearance */
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .top-header-container {
+    padding: 0.75rem 1rem;
+  }
+  
+  .login-button,
+  .language-button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .language-dropdown {
+    min-width: 100px;
+  }
+}
+
+@media (max-width: 480px) {
+  .top-header-container {
+    padding: 0.5rem 0.75rem;
+    gap: 0.5rem;
+  }
+  
+  .login-button span,
+  .language-button span:not(.dropdown-arrow):not(.language-icon) {
+    display: none;
+  }
+  
+  .login-button,
+  .language-button {
+    padding: 0.5rem;
+    min-width: auto;
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .language-dropdown {
+    right: -0.5rem;
+  }
+}

@@ -1,0 +1,29 @@
+/* Minimal styling - let Clerk use its default UI */
+
+/* Auth Container - minimal styling only */
+.auth-container {
+  background: white;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 1rem;
+}
+
+/* Remove body padding on auth pages */
+body:has(.auth-container) {
+  padding-top: 0 !important;
+}
+
+/* Remove body padding on admin pages */
+body:has(.admin-layout),
+body:has([class*="admin"]) {
+  padding-top: 0 !important;
+}
+
+/* Alternative approach - remove padding when on auth or admin pages */
+body.auth-page,
+body.admin-page {
+  padding-top: 0 !important;
+}
