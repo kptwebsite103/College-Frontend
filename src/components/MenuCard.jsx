@@ -1,12 +1,34 @@
 import React from 'react';
 
-export default function MenuCard({ menu, onEdit, onApprove, onDelete, onViewSubItems, isSubItem = false }) {
+export default function MenuCard({
+  menu,
+  onEdit,
+  onApprove,
+  onReject,
+  onDelete,
+  onViewSubItems,
+  isSubItem = false,
+  canReview = false,
+  highlighted = false
+}) {
+  const normalizeStatus = (status) => {
+    if (status === 'Approved') return 'Approved';
+    if (status === 'Rejected') return 'Rejected';
+    return 'Pending';
+  };
+
   const getStatusColor = (status) => {
-    return status === 'Approved' ? '#16a34a' : '#d97706'; // Darker amber for better visibility
+    const normalized = normalizeStatus(status);
+    if (normalized === 'Approved') return '#16a34a';
+    if (normalized === 'Rejected') return '#dc2626';
+    return '#d97706';
   };
 
   const getStatusBg = (status) => {
-    return status === 'Approved' ? '#f0fdf4' : '#fef3c7';
+    const normalized = normalizeStatus(status);
+    if (normalized === 'Approved') return '#f0fdf4';
+    if (normalized === 'Rejected') return '#fee2e2';
+    return '#fef3c7';
   };
 
   // Handle both old format, new backend format, and subitem format
@@ -17,9 +39,19 @@ export default function MenuCard({ menu, onEdit, onApprove, onDelete, onViewSubI
   const menuUrl = menu.redirect_url || menu.url_en || menu.url || 'No URL';
   const menuStatus = menu.status || 'Created'; // Show actual status from database
   const menuOrder = menu.order_no || menu.order || 0;
+  const displayStatus = normalizeStatus(menuStatus);
+  const isPending = displayStatus === 'Pending';
 
   return (
-    <div className="card" style={{ marginBottom: '12px', position: 'relative' }}>
+    <div
+      className="card"
+      style={{
+        marginBottom: '12px',
+        position: 'relative',
+        outline: highlighted ? '2px solid #3B82F6' : 'none',
+        boxShadow: highlighted ? '0 0 0 4px rgba(59,130,246,0.15)' : undefined
+      }}
+    >
       {/* Edit and Delete Icons - Top Right */}
       <div style={{ 
         position: 'absolute', 
@@ -66,7 +98,7 @@ export default function MenuCard({ menu, onEdit, onApprove, onDelete, onViewSubI
                 fontWeight: 500
               }}
             >
-              {menuStatus}
+              {displayStatus}
             </span>
             <span 
               style={{ 
@@ -115,7 +147,7 @@ export default function MenuCard({ menu, onEdit, onApprove, onDelete, onViewSubI
             View Sub-items
           </button>
 
-          {menuStatus === 'Created' && (!isSubItem ? (menu._id || menu.id) : true) && (
+          {isPending && canReview && (!isSubItem ? (menu._id || menu.id) : true) && (
             <button
               onClick={() => onApprove(menu._id || menu.id)}
               style={{
@@ -144,6 +176,38 @@ export default function MenuCard({ menu, onEdit, onApprove, onDelete, onViewSubI
               }}
             >
               Approve
+            </button>
+          )}
+
+          {isPending && canReview && (
+            <button
+              onClick={() => onReject(menu._id || menu.id)}
+              style={{
+                padding: '6px 12px',
+                border: '1px solid #dc2626',
+                backgroundColor: '#dc2626',
+                color: 'white',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '500',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 1px 2px rgba(220, 38, 38, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#b91c1c';
+                e.target.style.borderColor = '#b91c1c';
+                e.target.style.transform = 'translateY(-1px)';
+                e.target.style.boxShadow = '0 2px 4px rgba(220, 38, 38, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = '#dc2626';
+                e.target.style.borderColor = '#dc2626';
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = '0 1px 2px rgba(220, 38, 38, 0.3)';
+              }}
+            >
+              Reject
             </button>
           )}
         </div>

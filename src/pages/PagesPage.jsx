@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
-import { createPage, listPages, deletePage, approvePage, updatePage } from '../api/resources';
+import { createPage, listPages, deletePage, approvePage, rejectPage, updatePage } from '../api/resources';
 import { ensureDevAuth } from '../utils/devAuth';
+import { usePermissions } from '../utils/rolePermissions';
 import Popup from '../components/Popup';
 import './UserManagementContent.css';
 
@@ -12,6 +14,17 @@ export default function PagesPage() {
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deletePopup, setDeletePopup] = useState({ isOpen: false, pageId: null, pageTitle: '' });
+  const [searchParams] = useSearchParams();
+  const [highlightedId, setHighlightedId] = useState(null);
+  const cardRefs = useRef({});
+  const { isAdmin, isSuperAdmin } = usePermissions();
+  const canReview = isAdmin || isSuperAdmin;
+
+  const normalizeStatus = (status) => {
+    const value = String(status || '').toLowerCase();
+    if (['created', 'pending', 'review'].includes(value)) return 'pending';
+    return value || 'pending';
+  };
 
   // Load pages from database on component mount
   useEffect(() => {
@@ -19,6 +32,19 @@ export default function PagesPage() {
     ensureDevAuth();
     loadPages();
   }, []);
+
+  useEffect(() => {
+    const highlightId = searchParams.get('highlight');
+    if (!highlightId || pages.length === 0) return;
+
+    const target = cardRefs.current[highlightId] || document.getElementById(`page-card-${highlightId}`);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedId(highlightId);
+      const timer = setTimeout(() => setHighlightedId(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, pages.length]);
 
   const loadPages = async () => {
     try {
@@ -88,6 +114,10 @@ export default function PagesPage() {
 
   const handleApprovePage = async (pageId) => {
     try {
+      if (!canReview) {
+        showNotification('error', 'You do not have permission to approve pages.');
+        return;
+      }
       await approvePage(pageId);
       showNotification('success', 'Page approved successfully!');
       // Reload pages to get updated list
@@ -95,6 +125,21 @@ export default function PagesPage() {
     } catch (error) {
       console.error('Error approving page:', error);
       showNotification('error', 'Failed to approve page. Please try again.');
+    }
+  };
+
+  const handleRejectPage = async (pageId) => {
+    try {
+      if (!canReview) {
+        showNotification('error', 'You do not have permission to reject pages.');
+        return;
+      }
+      await rejectPage(pageId);
+      showNotification('success', 'Page rejected.');
+      loadPages();
+    } catch (error) {
+      console.error('Error rejecting page:', error);
+      showNotification('error', 'Failed to reject page. Please try again.');
     }
   };
 
@@ -125,6 +170,7 @@ export default function PagesPage() {
       }
 
       // Transform form data to match database schema
+      const finalStatus = canReview ? (pageData.status || 'pending') : 'pending';
       const pagePayload = {
         title: {
           en: pageData.title_en,
@@ -143,7 +189,7 @@ export default function PagesPage() {
             javascript: pageData.content_kn.javascript || ''
           }
         },
-        status: pageData.status || 'created'
+        status: finalStatus
       };
       
       if (editingPage) {
@@ -172,12 +218,14 @@ export default function PagesPage() {
   };
 
   const getStatusBadge = (status) => {
+    const normalized = normalizeStatus(status);
     const statusColors = {
       approved: { background: '#10B981', color: 'white' },
-      created: { background: '#F59E0B', color: 'white' },
+      pending: { background: '#F59E0B', color: 'white' },
+      rejected: { background: '#EF4444', color: 'white' },
       archived: { background: '#6B7280', color: 'white' }
     };
-    const colors = statusColors[status] || statusColors.created;
+    const colors = statusColors[normalized] || statusColors.pending;
     return (
       <span style={{
         display: 'inline-block',
@@ -188,7 +236,7 @@ export default function PagesPage() {
         background: colors.background,
         color: colors.color
       }}>
-        {status?.charAt(0).toUpperCase() + status?.slice(1) || 'Created'}
+        {normalized.charAt(0).toUpperCase() + normalized.slice(1)}
       </span>
     );
   };
@@ -228,6 +276,7 @@ export default function PagesPage() {
             onCancel={handleCancel}
             showNotification={showNotification}
             editingPage={editingPage}
+            canReview={canReview}
           />
         ) : (
           <div style={{
@@ -282,15 +331,26 @@ export default function PagesPage() {
               </div>
             ) : (
               // Pages list
-              pages.map((page) => (
+              pages.map((page) => {
+                const displayStatus = normalizeStatus(page.status);
+                const isPending = displayStatus === 'pending';
+                const isApproved = displayStatus === 'approved';
+                const isRejected = displayStatus === 'rejected';
+                return (
               <div
-                key={page.id}
+                key={page._id}
+                id={`page-card-${page._id}`}
+                ref={(el) => {
+                  if (el) cardRefs.current[page._id] = el;
+                }}
                 style={{
                   background: 'white',
                   borderRadius: '12px',
                   padding: '16px',
                   boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
                   border: '1px solid #E5E7EB',
+                  outline: highlightedId === page._id ? '2px solid #3B82F6' : 'none',
+                  boxShadow: highlightedId === page._id ? '0 0 0 4px rgba(59,130,246,0.15)' : '0 2px 8px rgba(0, 0, 0, 0.08)',
                   transition: 'all 0.2s ease',
                   cursor: 'pointer',
                   position: 'relative'
@@ -367,10 +427,10 @@ export default function PagesPage() {
                     borderRadius: '12px',
                     fontSize: '12px',
                     fontWeight: '500',
-                    background: page.status === 'approved' ? '#D1FAE5' : '#FEF3C7',
-                    color: page.status === 'approved' ? '#065F46' : '#92400E'
+                    background: isApproved ? '#D1FAE5' : isRejected ? '#FEE2E2' : '#FEF3C7',
+                    color: isApproved ? '#065F46' : isRejected ? '#991B1B' : '#92400E'
                   }}>
-                    {page.status?.charAt(0).toUpperCase() + page.status?.slice(1) || 'Created'}
+                    {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
                   </span>
                   {isRestrictedRoute(page.slug) && (
                     <span style={{
@@ -388,7 +448,7 @@ export default function PagesPage() {
 
                 {/* Action buttons */}
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  {page.status !== 'approved' && (
+                  {isPending && canReview && (
                     <button
                       style={{
                         flex: 1,
@@ -409,9 +469,31 @@ export default function PagesPage() {
                       Approve
                     </button>
                   )}
+                  {isPending && canReview && (
+                    <button
+                      style={{
+                        flex: 1,
+                        padding: '8px 12px',
+                        border: 'none',
+                        borderRadius: '6px',
+                        background: '#EF4444',
+                        color: 'white',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        cursor: 'pointer'
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRejectPage(page._id);
+                      }}
+                    >
+                      Reject
+                    </button>
+                  )}
                 </div>
               </div>
-              ))
+              );
+              })
             )}
           </div>
         )}
@@ -467,12 +549,12 @@ export default function PagesPage() {
   );
 }
 
-function AddEditPageForm({ onSave, onCancel, showNotification, editingPage }) {
+function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canReview }) {
   const [formData, setFormData] = useState({
     title_en: '',
     title_kn: '',
     slug: '',
-    status: 'created',
+    status: 'pending',
     css: '', // CSS is shared across languages
     content_en: {
       html: '',
@@ -492,7 +574,7 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage }) {
         title_en: editingPage.title?.en || '',
         title_kn: editingPage.title?.kn || '',
         slug: editingPage.slug || '',
-        status: editingPage.status || 'created',
+        status: editingPage.status === 'created' ? 'pending' : (editingPage.status || 'pending'),
         css: editingPage.css || '',
         content_en: {
           html: editingPage.content?.en?.html || '',
@@ -524,7 +606,7 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage }) {
         title_en: '',
         title_kn: '',
         slug: '',
-        status: 'created',
+        status: 'pending',
         css: '',
         content_en: {
           html: '',
@@ -1403,24 +1485,37 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage }) {
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
               Status
             </label>
-            <select
-              name="status"
-              value={formData.status}
-              onChange={handleChange}
-              style={{
-                width: '100%',
+            {canReview ? (
+              <select
+                name="status"
+                value={formData.status}
+                onChange={handleChange}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box',
+                  background: 'white'
+                }}
+              >
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="archived">Archived</option>
+              </select>
+            ) : (
+              <div style={{
                 padding: '12px',
-                border: '1px solid #D1D5DB',
+                border: '1px solid #E5E7EB',
                 borderRadius: '8px',
-                fontSize: '14px',
-                boxSizing: 'border-box',
-                background: 'white'
-              }}
-            >
-              <option value="created">Created</option>
-              <option value="approved">Approved</option>
-              <option value="archived">Archived</option>
-            </select>
+                background: '#F9FAFB',
+                color: '#6B7280',
+                fontSize: '14px'
+              }}>
+                Pending (requires admin approval)
+              </div>
+            )}
           </div>
         </div>
 

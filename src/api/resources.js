@@ -1,4 +1,15 @@
 import { apiRequest } from './http.js';
+import { getAccessToken } from '../state/auth.js';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+
+function joinUrl(base, path) {
+  if (!base) return path;
+  if (/^https?:\/\//i.test(path)) return path;
+  const b = base.endsWith('/') ? base.slice(0, -1) : base;
+  const p = path.startsWith('/') ? path : `/${path}`;
+  return `${b}${p}`;
+}
 
 export function health() {
   return apiRequest('/health');
@@ -6,6 +17,38 @@ export function health() {
 
 export function listPages() {
   return apiRequest('/api/pages');
+}
+
+export function listHomeSections(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  const suffix = query ? `?${query}` : '';
+  return apiRequest(`/api/home-sections${suffix}`);
+}
+
+export function listActiveHomeSections(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  const suffix = query ? `?${query}` : '';
+  return apiRequest(`/api/home-sections/active${suffix}`);
+}
+
+export function createHomeSection(sectionData) {
+  return apiRequest('/api/home-sections', {
+    method: 'POST',
+    body: sectionData
+  });
+}
+
+export function updateHomeSection(sectionId, sectionData) {
+  return apiRequest(`/api/home-sections/${sectionId}`, {
+    method: 'PUT',
+    body: sectionData
+  });
+}
+
+export function deleteHomeSection(sectionId) {
+  return apiRequest(`/api/home-sections/${sectionId}`, {
+    method: 'DELETE'
+  });
 }
 
 export function getPageBySlug(slug) {
@@ -34,6 +77,12 @@ export function deletePage(pageId) {
 
 export function approvePage(pageId) {
   return apiRequest(`/api/pages/${pageId}/publish`, {
+    method: 'POST'
+  });
+}
+
+export function rejectPage(pageId) {
+  return apiRequest(`/api/pages/${pageId}/reject`, {
     method: 'POST'
   });
 }
@@ -200,252 +249,130 @@ function formatFileSize(bytes) {
 // Media upload functions
 export function uploadFile(file, onProgress, options = {}) {
   const {
-    maxFileSize = 50 * 1024 * 1024, // 50MB default
-    timeout = 30000, // 30 seconds
-    maxRetries = 3,
-    chunkSize = 1024 * 1024 // 1MB chunks for large files
+    maxFileSize = 50 * 1024 * 1024,
+    timeout = 60000,
+    maxRetries = 2,
+    folder = 'media',
+    title,
+    tags,
+    departmentId
   } = options;
 
-  console.log('🚀 ImageKit Upload Started:', {
-    fileName: file.name,
-    fileSize: formatFileSize(file.size),
-    fileType: file.type,
-    timestamp: new Date().toISOString()
-  });
+  if (!file) {
+    return Promise.reject(new Error('No file selected'));
+  }
 
-  // Validate file
   if (file.size > maxFileSize) {
-    console.log('❌ Upload Failed - File too large:', formatFileSize(file.size));
     return Promise.reject(new Error(`File size exceeds ${maxFileSize / (1024 * 1024)}MB limit`));
   }
 
-  // Validate file type
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-  if (!allowedTypes.includes(file.type) && !file.type.includes('image/') && !file.type.includes('video/')) {
-    console.log('❌ Upload Failed - Unsupported file type:', file.type);
+  const allowedTypes = [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'image/svg+xml',
+    'video/mp4',
+    'video/webm',
+    'video/quicktime',
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/wav',
+    'audio/x-m4a',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain',
+    'text/csv'
+  ];
+
+  if (!allowedTypes.includes(file.type) && !file.type.startsWith('image/') && !file.type.startsWith('video/') && !file.type.startsWith('audio/')) {
     return Promise.reject(new Error('File type not supported'));
   }
 
-  console.log('✅ File validation passed, creating ImageKit upload request...');
-
-  // ImageKit Direct Upload Configuration
-  const imageKitPublicKey = import.meta.env.VITE_IMAGEKIT_PUBLIC_KEY || 'your_public_key';
-  const imageKitUrlEndpoint = import.meta.env.VITE_IMAGEKIT_URL_ENDPOINT || 'https://ik.imagekit.io/kpt103';
-  const imageKitAuthenticationEndpoint = import.meta.env.VITE_API_BASE_URL + '/api/upload/auth-params' || '/api/upload/auth-params';
-  
   return new Promise((resolve, reject) => {
     let retryCount = 0;
-    
+
     const attemptUpload = () => {
-      console.log(`📤 ImageKit upload attempt ${retryCount + 1}/${maxRetries + 1} for file: ${file.name}`);
-      
-      // Get authentication parameters from your backend
-      fetch(imageKitAuthenticationEndpoint, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('kpt_access_token')}`
-        }
-      })
-      .then(authResponse => {
-        if (!authResponse.ok) {
-          throw new Error('Failed to get ImageKit authentication');
-        }
-        return authResponse.json();
-      })
-      .then(authResult => {
-        if (!authResult.success) {
-          throw new Error(authResult.error || 'Authentication failed');
-        }
-        
-        const authData = authResult.data;
-        const currentTime = Math.floor(Date.now() / 1000);
-        const timeUntilExpiry = authData.expire ? authData.expire - currentTime : 'unknown';
-        
-        console.log('🔐 ImageKit auth obtained:', { 
-          token: authData.token ? 'received' : 'missing', 
-          expire: authData.expire,
-          signature: authData.signature ? 'received' : 'missing',
-          publicKey: authData.publicKey ? 'received' : 'missing',
-          currentTime: currentTime,
-          timeUntilExpiry: timeUntilExpiry
-        });
-        
-        // Check if token is expired or about to expire (less than 30 seconds)
-        if (timeUntilExpiry !== 'unknown' && timeUntilExpiry < 30) {
-          console.log('⚠️ ImageKit token expired or too old, requesting fresh token...');
-          throw new Error('Authentication token expired');
-        }
-        
-        // Create FormData for ImageKit
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('fileName', file.name);
-        formData.append('useUniqueFileName', 'true');
-        formData.append('folder', 'media');
-        
-        // Add ImageKit authentication parameters in correct order
-        if (authData.token) {
-          formData.append('publicKey', authData.publicKey);
-          formData.append('signature', authData.signature);
-          formData.append('expire', authData.expire.toString());
-          formData.append('token', authData.token);
-        }
-        
-        const xhr = new XMLHttpRequest();
-        let timeoutId;
-        
-        // Set timeout
-        timeoutId = setTimeout(() => {
-          console.log('⏰ ImageKit upload timeout for file:', file.name);
-          xhr.abort();
-          if (retryCount < maxRetries) {
-            retryCount++;
-            console.log(`ImageKit timeout, retrying... (${retryCount}/${maxRetries})`);
-            setTimeout(attemptUpload, 1000 * retryCount);
-          } else {
-            console.log('❌ ImageKit upload failed after timeout retries:', file.name);
-            reject(new Error('ImageKit upload timeout after multiple retries'));
-          }
-        }, timeout);
-        
-        // Optimized progress tracking - throttle updates
-        let lastProgressUpdate = 0;
-        const progressThrottle = 100; // Update every 100ms
-        
-        if (onProgress) {
-          xhr.upload.addEventListener('progress', (event) => {
-            if (event.lengthComputable) {
-              const now = Date.now();
-              if (now - lastProgressUpdate > progressThrottle) {
-                const percentComplete = (event.loaded / event.total) * 100;
-                console.log(`📊 ImageKit Upload Progress: ${percentComplete.toFixed(1)}% - ${formatFileSize(event.loaded)} / ${formatFileSize(event.total)}`);
-                onProgress(percentComplete);
-                lastProgressUpdate = now;
-              }
-            }
-          });
-        }
-        
-        xhr.addEventListener('load', () => {
-          clearTimeout(timeoutId);
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const response = JSON.parse(xhr.responseText);
-              console.log('✅ ImageKit Upload Completed Successfully:', {
-                fileName: file.name,
-                fileId: response.fileId,
-                url: response.url,
-                size: formatFileSize(file.size),
-                timestamp: new Date().toISOString()
-              });
-              resolve(response);
-            } catch (error) {
-              console.log('❌ ImageKit Upload Failed - Invalid response:', error);
-              reject(new Error('Invalid response from ImageKit'));
-            }
-          } else {
-            // Log detailed error for debugging
-            const responseText = xhr.responseText;
-            console.log('❌ ImageKit Upload Failed - Detailed Error:', {
-              status: xhr.status,
-              statusText: xhr.statusText,
-              responseText: responseText,
-              fileName: file.name,
-              formData: Object.fromEntries(formData.entries())
-            });
-            
-            // Retry on authentication errors (403) and server errors (5xx)
-            if ((xhr.status === 403 || xhr.status >= 500) && retryCount < maxRetries) {
-              retryCount++;
-              console.log(`ImageKit auth/server error, retrying... (${retryCount}/${maxRetries})`);
-              setTimeout(attemptUpload, 1000 * retryCount);
-            } else {
-              try {
-                const errorResponse = JSON.parse(responseText);
-                console.log('❌ ImageKit Upload Failed - Server Error:', {
-                  status: xhr.status,
-                  error: errorResponse.message || errorResponse.error || 'Unknown ImageKit server error',
-                  fileName: file.name
-                });
-                reject(new Error(errorResponse.message || errorResponse.error || `ImageKit upload failed with status ${xhr.status}`));
-              } catch {
-                console.log('❌ ImageKit Upload Failed - Server Error:', {
-                  status: xhr.status,
-                  responseText: responseText,
-                  fileName: file.name
-                });
-                reject(new Error(`ImageKit upload failed with status ${xhr.status}: ${responseText}`));
-              }
-            }
-          }
-        });
-        
-        xhr.addEventListener('error', () => {
-          clearTimeout(timeoutId);
-          if (retryCount < maxRetries) {
-            retryCount++;
-            console.log(`ImageKit network error, retrying... (${retryCount}/${maxRetries})`);
-            setTimeout(attemptUpload, 1000 * retryCount);
-          } else {
-            console.log('❌ ImageKit Upload Failed - Network Error:', file.name);
-            reject(new Error('Network error during ImageKit upload'));
-          }
-        });
-        
-        // Upload directly to ImageKit
-        xhr.open('POST', `https://upload.imagekit.io/api/v1/files/upload`);
-        
-        // Optimize for large files
-        if (file.size > 10 * 1024 * 1024) { // Files larger than 10MB
-          console.log('📦 Large file detected, adding optimization headers:', formatFileSize(file.size));
-        }
-        
-        console.log('🌐 Sending upload request to ImageKit...');
-        xhr.send(formData);
-      })
-      .catch(error => {
-        console.log('❌ Failed to get ImageKit authentication:', error);
-        
-        // Fallback to backend upload if ImageKit auth fails
-        if (retryCount < maxRetries) {
-          retryCount++;
-          console.log('🔄 Retrying ImageKit authentication...');
-          setTimeout(attemptUpload, 1000);
-        } else {
-          console.log('🔄 All ImageKit attempts failed, falling back to backend upload...');
-          uploadToBackend()
-            .then(resolve)
-            .catch(reject);
-        }
-      });
-    };
-    
-    const uploadToBackend = () => {
-      // Fallback to original backend upload
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('folder', 'media');
-      
-      const token = localStorage.getItem('kpt_access_token');
+      formData.append('folder', folder);
+      if (title) formData.append('title', title);
+      if (departmentId) formData.append('departmentId', departmentId);
+      if (tags && Array.isArray(tags)) formData.append('tags', JSON.stringify(tags));
+
       const xhr = new XMLHttpRequest();
-      
-      xhr.open('POST', `${import.meta.env.VITE_API_BASE_URL || ''}/api/media/upload`);
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-      
+      const url = joinUrl(API_BASE, '/api/media/upload');
+      const token = getAccessToken();
+
+      xhr.open('POST', url);
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+      xhr.timeout = timeout;
+
+      if (onProgress) {
+        xhr.upload.onprogress = (event) => {
+          if (!event.lengthComputable) return;
+          const percent = (event.loaded / event.total) * 100;
+          onProgress(percent);
+        };
+      }
+
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          const response = JSON.parse(xhr.responseText);
-          resolve(response);
-        } else {
-          reject(new Error('Backend upload failed'));
+          try {
+            const response = JSON.parse(xhr.responseText);
+            resolve(response);
+          } catch (error) {
+            reject(new Error('Invalid response from upload'));
+          }
+          return;
         }
+
+        if ((xhr.status >= 500 || xhr.status === 429) && retryCount < maxRetries) {
+          retryCount += 1;
+          setTimeout(attemptUpload, 1000 * retryCount);
+          return;
+        }
+
+        let message = `Upload failed with status ${xhr.status}`;
+        try {
+          const errorResponse = JSON.parse(xhr.responseText);
+          if (errorResponse && errorResponse.message) {
+            message = errorResponse.message;
+          }
+        } catch (_) {
+          // ignore parse errors
+        }
+        reject(new Error(message));
       };
-      
-      xhr.onerror = () => reject(new Error('Backend network error'));
+
+      xhr.onerror = () => {
+        if (retryCount < maxRetries) {
+          retryCount += 1;
+          setTimeout(attemptUpload, 1000 * retryCount);
+          return;
+        }
+        reject(new Error('Network error during upload'));
+      };
+
+      xhr.ontimeout = () => {
+        if (retryCount < maxRetries) {
+          retryCount += 1;
+          setTimeout(attemptUpload, 1000 * retryCount);
+          return;
+        }
+        reject(new Error('Upload timeout'));
+      };
+
       xhr.send(formData);
     };
-    
+
     attemptUpload();
   });
 }
@@ -457,5 +384,12 @@ export function listMedia() {
 export function deleteMedia(mediaId) {
   return apiRequest(`/api/media/${mediaId}`, {
     method: 'DELETE'
+  });
+}
+
+export function updateMedia(mediaId, payload) {
+  return apiRequest(`/api/media/${mediaId}`, {
+    method: 'PUT',
+    body: payload
   });
 }

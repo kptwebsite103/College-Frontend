@@ -1,7 +1,7 @@
 // Development helper - create mock admin authentication
 export function createDevAuth() {
   const mockUser = {
-    id: 'dev-admin-1',
+    id: '000000000000000000000001',
     email: 'dev@admin.com',
     role: 'admin',
     name: 'Development Admin'

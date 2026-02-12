@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { uploadFile, listMedia, deleteMedia, compressImage } from '../api/resources.js';
+import { uploadFile, listMedia, deleteMedia, updateMedia, compressImage } from '../api/resources.js';
 import './UserManagementContent.css';
 
 export default function MediaPage() {
@@ -16,6 +16,7 @@ export default function MediaPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [uploadTitle, setUploadTitle] = useState('');
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -46,39 +47,16 @@ export default function MediaPage() {
     try {
       setLoading(true);
       const mediaData = await listMedia();
-      setMediaItems(mediaData || []);
+      const normalized = Array.isArray(mediaData)
+        ? mediaData.map(normalizeMediaItem).filter(Boolean)
+        : [];
+      setMediaItems(normalized);
     } catch (error) {
       console.error('Failed to load media items:', error);
-      // Fallback to mock data when API is not available
-      setMediaItems([
-        {
-          id: 1,
-          type: 'image',
-          name: 'College Building.jpg',
-          url: 'https://ik.imagekit.io/kpt103/college-building.jpg',
-          size: '2.4 MB',
-          uploadedAt: '2024-01-15',
-          thumbnail: 'https://picsum.photos/200/150?random=1'
-        },
-        {
-          id: 2,
-          type: 'video',
-          name: 'Campus Tour.mp4',
-          url: 'https://ik.imagekit.io/kpt103/campus-tour.mp4',
-          size: '15.8 MB',
-          uploadedAt: '2024-01-14',
-          thumbnail: 'https://picsum.photos/200/150?random=2'
-        },
-        {
-          id: 3,
-          type: 'document',
-          name: 'College Brochure.pdf',
-          url: 'https://ik.imagekit.io/kpt103/college-brochure.pdf',
-          size: '4.2 MB',
-          uploadedAt: '2024-01-13',
-          thumbnail: null
-        }
-      ]);
+      if (isMounted.current) {
+        setUploadError('Failed to load media from Cloudinary.');
+        setMediaItems([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -135,7 +113,8 @@ export default function MediaPage() {
       const uploadOptions = {
         maxFileSize: 50 * 1024 * 1024, // 50MB
         timeout: 60000, // 60 seconds for better reliability
-        maxRetries: 3
+        maxRetries: 3,
+        title: uploadTitle?.trim() || undefined
       };
 
       console.log('⚙️ Starting upload with options:', uploadOptions);
@@ -144,29 +123,19 @@ export default function MediaPage() {
         if (isMounted.current) setUploadProgress(progress);
       }, uploadOptions);
 
-      // Add uploaded file to the media list
-      const newMediaItem = {
-        id: result.fileId || result.id,
-        type: getFileType(file),
-        name: file.name,
-        url: result.url,
-        size: formatFileSize(processedFile.size),
-        uploadedAt: new Date().toISOString().split('T')[0],
-        thumbnail: result.thumbnailUrl || null
-      };
-
-      console.log('➕ Adding file to media library:', {
+      console.log('➕ Upload complete, refreshing media library:', {
         fileName: file.name,
-        fileId: newMediaItem.id,
-        url: newMediaItem.url,
-        size: newMediaItem.size,
-        type: newMediaItem.type
+        mediaId: result?._id,
+        url: result?.url
       });
 
       if (isMounted.current) {
-        setMediaItems(prev => [newMediaItem, ...prev]);
-        setUploading(false);
-        setUploadProgress(0);
+        const normalized = normalizeMediaItem(result);
+        if (normalized) {
+          setMediaItems((prev) => [normalized, ...prev.filter((item) => item.id !== normalized.id)]);
+        }
+        loadMediaItems();
+        setUploadTitle('');
       }
     } catch (error) {
       console.error('❌ Upload process failed:', {
@@ -174,51 +143,56 @@ export default function MediaPage() {
         error: error.message,
         stack: error.stack
       });
-      
-      // If backend is not available, simulate upload for demo purposes
-      if (error.message.includes('404') || error.message.includes('Not Found')) {
-        console.log('🔄 Backend unavailable, using demo mode for:', file.name);
-        
-        const newMediaItem = {
-          id: Date.now(),
-          type: getFileType(file),
-          name: file.name,
-          url: `https://ik.imagekit.io/kpt103/demo-${file.name}`,
-          size: formatFileSize(file.size),
-          uploadedAt: new Date().toISOString().split('T')[0],
-          thumbnail: file.type.startsWith('image/') ? `https://picsum.photos/200/150?random=${Date.now()}` : null
-        };
-        
-        console.log('➕ Demo file added to media library:', newMediaItem);
-        
-        if (isMounted.current) {
-          setMediaItems(prev => [newMediaItem, ...prev]);
-          setUploading(false);
-          setUploadProgress(0);
-        }
-      } else {
-        if (isMounted.current) {
-          setUploadError(error.message || 'Upload failed. Please try again.');
-          setUploading(false);
-          setUploadProgress(0);
-        }
+
+      if (isMounted.current) {
+        setUploadError(error.message || 'Upload failed. Please try again.');
+      }
+    } finally {
+      if (isMounted.current) {
+        setUploading(false);
+        setUploadProgress(0);
       }
     }
   };
 
-  const getFileType = (file) => {
-    if (file.type.startsWith('image/')) return 'image';
-    if (file.type.startsWith('video/')) return 'video';
-    if (file.type === 'application/pdf' || file.type.includes('document')) return 'document';
-    return 'document';
-  };
-
-  const formatFileSize = (bytes) => {
+  function formatFileSize(bytes) {
+    if (!bytes || Number.isNaN(bytes)) return '0 Bytes';
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  function normalizeMediaItem(item) {
+    if (!item) return null;
+    return {
+      id: item._id || item.id,
+      type: item.type || (item.format && item.format.includes('pdf') ? 'pdf' : 'document'),
+      title: item.title || '',
+      name: item.filename || item.name || item.originalFilename || 'Untitled',
+      url: item.url || item.secure_url || '',
+      size: typeof item.size === 'number' ? formatFileSize(item.size) : item.size,
+      uploadedAt: item.createdAt ? new Date(item.createdAt).toISOString().split('T')[0] : item.uploadedAt,
+      thumbnail: item.thumbnailUrl || item.thumbnail || null
+    };
+  }
+
+  const handleEditTitle = async (item) => {
+    const currentTitle = item.title || item.name || '';
+    const nextTitle = window.prompt('Edit title', currentTitle);
+    if (nextTitle === null) return;
+    const trimmed = nextTitle.trim();
+    try {
+      const updated = await updateMedia(item.id, { title: trimmed });
+      const normalized = normalizeMediaItem(updated);
+      if (normalized) {
+        setMediaItems((prev) => prev.map((entry) => (entry.id === normalized.id ? normalized : entry)));
+      }
+    } catch (error) {
+      console.error('Update failed:', error);
+      alert('Failed to update title.');
+    }
   };
 
   const handleDelete = async (mediaId) => {
@@ -231,11 +205,18 @@ export default function MediaPage() {
     }
   };
 
+  const getDisplayName = (item) => {
+    if (!item) return '';
+    if (item.title && String(item.title).trim()) return item.title;
+    return item.name || '';
+  };
+
   const filteredItems = useMemo(() => {
     if (!mediaItems || !Array.isArray(mediaItems)) return [];
     return mediaItems.filter(item => {
       const matchesFilter = filter === 'all' || item.type === filter;
-      const matchesSearch = item.name && item.name.toLowerCase && item.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const haystack = `${item.name || ''} ${item.title || ''}`.toLowerCase();
+      const matchesSearch = haystack.includes(searchTerm.toLowerCase());
       return matchesFilter && matchesSearch;
     });
   }, [mediaItems, filter, searchTerm]);
@@ -413,24 +394,24 @@ export default function MediaPage() {
               </button>
             </div>
             
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              style={{
-                padding: '10px 20px',
-                border: 'none',
-                borderRadius: '8px',
-                background: uploading ? '#9CA3AF' : '#3B82F6',
-                color: 'white',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: uploading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                transition: 'background-color 0.2s'
-              }}
-            >
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: uploading ? '#9CA3AF' : '#3B82F6',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: uploading ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'background-color 0.2s'
+                }}
+              >
               {uploading ? (
                 <>
                   <div style={{ 
@@ -452,8 +433,22 @@ export default function MediaPage() {
                   </svg>
                   Upload File
                 </>
-              )}
-            </button>
+                )}
+              </button>
+
+              <input
+                type="text"
+                value={uploadTitle}
+                onChange={(event) => setUploadTitle(event.target.value)}
+                placeholder="Title (optional)"
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #D1D5DB',
+                  fontSize: '14px',
+                  minWidth: '220px'
+                }}
+              />
             
             <input
               ref={fileInputRef}
@@ -673,8 +668,22 @@ export default function MediaPage() {
                     }}>
                       <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'%3E%3C/path%3E%3Cpolyline points='7 10 12 15 17 10'%3E%3C/polyline%3E%3Cline x1='12' y1='15' x2='12' y2='3'%3E%3C/line%3E%3C/svg%3E" alt="Download" />
                     </button>
+                    <button className="edit-btn" title="Edit Title" onClick={() => handleEditTitle(item)} style={{
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '6px',
+                      borderRadius: '50%',
+                      width: '32px',
+                      height: '32px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'%3E%3C/path%3E%3Cpath d='M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z'%3E%3C/path%3E%3C/svg%3E" alt="Edit" />
+                    </button>
                     <button className="delete-btn" title="Delete" onClick={() => {
-                      if (window.confirm(`Delete "${item.name}"?`)) {
+                      if (window.confirm(`Delete "${getDisplayName(item)}"?`)) {
                         handleDelete(item.id);
                       }
                     }} style={{
@@ -698,7 +707,7 @@ export default function MediaPage() {
                 {item.type !== 'document' && item.thumbnail ? (
                   <img 
                     src={item.thumbnail} 
-                    alt={item.name}
+                    alt={getDisplayName(item)}
                     onClick={() => window.open(item.url)}
                     style={{
                       width: '100%',
@@ -739,7 +748,7 @@ export default function MediaPage() {
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap'
                   }}>
-                    {item.name}
+                    {getDisplayName(item)}
                   </h3>
                   
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
@@ -799,7 +808,7 @@ export default function MediaPage() {
                 {/* File info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: '600', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {item.name}
+                    {getDisplayName(item)}
                   </div>
                   <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: '#6B7280' }}>
                     <span>{item.type.charAt(0).toUpperCase() + item.type.slice(1)}</span>
@@ -824,8 +833,22 @@ export default function MediaPage() {
                   }}>
                     <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'%3E%3C/path%3E%3Cpolyline points='7 10 12 15 17 10'%3E%3C/polyline%3E%3Cline x1='12' y1='15' x2='12' y2='3'%3E%3C/line%3E%3C/svg%3E" alt="Download" />
                   </button>
+                  <button className="edit-btn" title="Edit Title" onClick={() => handleEditTitle(item)} style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '6px',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'%3E%3C/path%3E%3Cpath d='M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z'%3E%3C/path%3E%3C/svg%3E" alt="Edit" />
+                  </button>
                   <button className="delete-btn" title="Delete" onClick={() => {
-                    if (window.confirm(`Delete "${item.name}"?`)) {
+                    if (window.confirm(`Delete "${getDisplayName(item)}"?`)) {
                       handleDelete(item.id);
                     }
                   }} style={{

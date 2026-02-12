@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import MenuCard from '../components/MenuCard.jsx';
 import AddMenuItemForm from '../components/AddMenuItemForm.jsx';
 import { listMenus, createMenu, updateMenu, deleteMenu, getTheme, updateTheme, createPage, getPageBySlug } from '../api/resources.js';
+import { usePermissions } from '../utils/rolePermissions';
 import './UserManagementContent.css';
 
 export default function MenusPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [menus, setMenus] = useState([]);
+  const [searchParams] = useSearchParams();
+  const { isAdmin, isSuperAdmin } = usePermissions();
+  const canReview = isAdmin || isSuperAdmin;
+  const [highlightedMenuId, setHighlightedMenuId] = useState(null);
+  const [highlightedItemId, setHighlightedItemId] = useState(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [color1, setColor1] = useState('');
   const [color2, setColor2] = useState('');
@@ -104,6 +111,56 @@ export default function MenusPage() {
     });
   }, []);
 
+  const findItemPath = (menuList, targetId) => {
+    const findInItems = (items, path) => {
+      if (!items) return null;
+      for (const item of items) {
+        if (String(item._id) === String(targetId)) {
+          return { path, item };
+        }
+        if (item.items && item.items.length > 0) {
+          const result = findInItems(item.items, [...path, item]);
+          if (result) return result;
+        }
+      }
+      return null;
+    };
+
+    for (const menu of menuList) {
+      const result = findInItems(menu.items || [], [menu]);
+      if (result) return result;
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    if (!menus.length) return;
+
+    const menuId = searchParams.get('highlightMenu');
+    const itemId = searchParams.get('highlightItem');
+
+    if (itemId) {
+      const result = findItemPath(menus, itemId);
+      if (result && result.path && result.path.length > 0) {
+        const parentPath = result.path;
+        const parentMenu = parentPath[parentPath.length - 1];
+        setCurrentParentPath(parentPath);
+        setCurrentParentMenu(parentMenu);
+        setHighlightedItemId(itemId);
+        setHighlightedMenuId(null);
+        const timer = setTimeout(() => setHighlightedItemId(null), 4000);
+        return () => clearTimeout(timer);
+      }
+    } else if (menuId) {
+      setCurrentParentMenu(null);
+      setCurrentParentPath([]);
+      setHighlightedMenuId(menuId);
+      setHighlightedItemId(null);
+      const timer = setTimeout(() => setHighlightedMenuId(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, menus]);
+
   // Debug: Log when menus state changes
   useEffect(() => {
     // Removed debug logs
@@ -150,6 +207,9 @@ export default function MenusPage() {
     setError(null);
     
     try {
+      const statusForSave = canReview ? (menuData.status || 'Created') : 'Created';
+      const statusForEdit = canReview ? (menuData.status || editingMenu?.status || 'Created') : 'Created';
+
       // Transform frontend data to backend format
       const slug = (menuData.menu_name_en || menuData.name?.en || '').toLowerCase()
         .replace(/\s+/g, '-')
@@ -167,7 +227,7 @@ export default function MenusPage() {
         redirect_url: menuData?.redirect_url || '',
         order: menuData?.order_no || 0,
         target: '_self',
-        status: menuData?.status || 'Created',
+        status: statusForEdit,
         items: []
       };
 
@@ -178,8 +238,8 @@ export default function MenusPage() {
         },
         slug: slug,
         type: 'navigation', // Default type
-        status: menuData.status || 'Created', // Set status field
-        active: menuData.status === 'Approved' || menuData.active,
+        status: statusForSave, // Set status field
+        active: statusForSave === 'Approved' || menuData.active,
         order: menuData.order_no || menuData.order || 0,
         url: menuData.url_en || '',
         redirect_url: menuData.redirect_url || '',
@@ -234,7 +294,7 @@ export default function MenusPage() {
                 redirect_url: menuData.redirect_url || '',
                 order: menuData.order_no || 0,
                 target: '_self',
-                status: menuData.status || editingMenu.status || 'Created'
+                status: statusForEdit
               };
               
               // Update the root menu with the updated nested structure
@@ -275,7 +335,7 @@ export default function MenusPage() {
               redirect_url: menuData.redirect_url || '',
               order: menuData.order_no || 0,
               target: '_self',
-              status: menuData.status || editingMenu.status || 'Created'
+              status: statusForEdit
             };
             
             const updatedParent = {
@@ -318,7 +378,7 @@ export default function MenusPage() {
           redirect_url: menuData?.redirect_url || '',
           order: menuData?.order_no || 0,
           target: '_self',
-          status: menuData?.status || 'Created',
+          status: statusForSave,
           items: [] // Ensure items array exists
         };
 
@@ -415,7 +475,7 @@ export default function MenusPage() {
                   en: `<h1>${newItem.title?.en || menuData.menu_name_en || 'New Page'}</h1><p>Welcome to the ${newItem.title?.en || menuData.menu_name_en || 'new page'}.</p>`,
                   kn: newItem.title?.kn ? `<h1>${newItem.title?.kn}</h1><p>ಸ್ವಾಗತ</p>` : ''
                 },
-                status: 'published'
+                status: canReview ? 'approved' : 'pending'
               });
               console.log('Auto-created page for slug:', slug);
             }
@@ -516,7 +576,7 @@ export default function MenusPage() {
                     en: `<h1>${transformedData.name?.en || menuData.menu_name_en || 'New Page'}</h1><p>Welcome to the ${transformedData.name?.en || menuData.menu_name_en || 'new page'}.</p>`,
                     kn: transformedData.name?.kn ? `<h1>${transformedData.name?.kn}</h1><p>ಸ್ವಾಗತ</p>` : ''
                   },
-                  status: 'published'
+                  status: canReview ? 'approved' : 'pending'
                 });
                 console.log('Auto-created page for slug:', slug);
               }
@@ -648,6 +708,10 @@ export default function MenusPage() {
   };
 
       const handleApproveMenu = async (menuId) => {
+        if (!canReview) {
+          showNotification('error', 'You do not have permission to approve menus.');
+          return;
+        }
         setLoading(true);
         setError(null);
     
@@ -659,12 +723,12 @@ export default function MenusPage() {
           console.log('Approving menu:', menuId, 'API ID:', apiMenuId);
     
           // Update menu status via API
-          const response = await updateMenu(apiMenuId, { status: 'Approved' });
+          const response = await updateMenu(apiMenuId, { status: 'Approved', active: true });
           console.log('API response:', response);
-    
+
           // For top-level menu approval, we need to update the entire menu from backend
           // since approval might change other fields too
-          const approvalResponse = await updateMenu(apiMenuId, { status: 'Approved' });
+          const approvalResponse = await updateMenu(apiMenuId, { status: 'Approved', active: true });
           console.log('API response:', approvalResponse);
 
           // Process with temp IDs
@@ -713,8 +777,59 @@ export default function MenusPage() {
           setLoading(false);
         }
       };
+
+      const handleRejectMenu = async (menuId) => {
+        if (!canReview) {
+          showNotification('error', 'You do not have permission to reject menus.');
+          return;
+        }
+        setLoading(true);
+        setError(null);
+
+        try {
+          const menuToUpdate = menus.find(m => (m._id || m.id) === menuId);
+          const apiMenuId = menuToUpdate ? (menuToUpdate._id || menuToUpdate.id) : menuId;
+
+          const rejectionResponse = await updateMenu(apiMenuId, { status: 'Rejected', active: false });
+
+          const addTempIds = (items, path = '') => {
+            return items.map((item, index) => {
+              const contentHash = `${item.title?.en || ''}-${item.url || ''}-${item.order || 0}`;
+              const stableId = item._id || `temp-${path}-${index}-${contentHash}`;
+              return {
+                ...item,
+                _id: stableId,
+                items: item.items ? addTempIds(item.items, `${path}-${index}`) : []
+              };
+            });
+          };
+
+          const processedMenu = {
+            ...rejectionResponse,
+            items: rejectionResponse.items ? addTempIds(rejectionResponse.items) : []
+          };
+
+          const updatedMenus = menus.map(menu =>
+            (menu._id || menu.id) === (processedMenu._id || processedMenu.id) ? processedMenu : menu
+          );
+          setMenus(updatedMenus);
+
+          window.dispatchEvent(new CustomEvent('menusUpdated', { detail: updatedMenus }));
+
+          showNotification('success', 'Menu rejected.');
+        } catch (error) {
+          console.error('Error rejecting menu:', error);
+          setError('Failed to reject menu: ' + (error.message || error));
+        } finally {
+          setLoading(false);
+        }
+      };
     
       const handleApproveSubItem = async (parentMenu, subItem) => {
+        if (!canReview) {
+          showNotification('error', 'You do not have permission to approve menu items.');
+          return;
+        }
         setLoading(true);
         setError(null);
 
@@ -761,6 +876,55 @@ export default function MenusPage() {
         } catch (error) {
           console.error('Error approving sub-item:', error);
           setError('Failed to approve sub-item: ' + (error.message || error));
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const handleRejectSubItem = async (parentMenu, subItem) => {
+        if (!canReview) {
+          showNotification('error', 'You do not have permission to reject menu items.');
+          return;
+        }
+        setLoading(true);
+        setError(null);
+
+        try {
+          const rootParent = currentParentPath[0];
+
+          const updateItemById = (items) => {
+            return items.map(item => {
+              if (item._id === subItem._id) {
+                return { ...item, status: 'Rejected' };
+              } else if (item.items && item.items.length > 0) {
+                return {
+                  ...item,
+                  items: updateItemById(item.items)
+                };
+              }
+              return item;
+            });
+          };
+
+          const updatedItems = updateItemById(rootParent.items || []);
+          const updatedParent = {
+            ...rootParent,
+            items: updatedItems
+          };
+
+          const response = await updateMenu(rootParent._id || rootParent.id, updatedParent);
+
+          const updated = menus.map(m =>
+            (m._id || m.id) === (rootParent._id || rootParent.id) ? response : m
+          );
+          setMenus(updated);
+
+          window.dispatchEvent(new CustomEvent('menusUpdated', { detail: updated }));
+
+          showNotification('success', 'Sub-item rejected.');
+        } catch (error) {
+          console.error('Error rejecting sub-item:', error);
+          setError('Failed to reject sub-item: ' + (error.message || error));
         } finally {
           setLoading(false);
         }
@@ -1104,12 +1268,15 @@ const handleCancelForm = () => {
         }}>
           {menuList.map(menu => (
             <MenuCard
-              key={menu.id}
+              key={menu._id || menu.id}
               menu={menu}
               onEdit={handleEditMenu}
               onApprove={handleApproveMenu}
+              onReject={handleRejectMenu}
               onDelete={handleDeleteMenu}
               onViewSubItems={handleViewSubItems}
+              canReview={canReview}
+              highlighted={highlightedMenuId && String(highlightedMenuId) === String(menu._id || menu.id)}
             />
           ))}
         </div>
@@ -1141,9 +1308,12 @@ const handleCancelForm = () => {
               menu={item}
               onEdit={() => handleEditSubItem(currentParentMenu, item, index)}
               onApprove={() => handleApproveSubItem(currentParentMenu, item)}
+              onReject={() => handleRejectSubItem(currentParentMenu, item)}
               onDelete={() => handleDeleteSubItem(currentParentMenu, item, index)}
               onViewSubItems={handleViewSubItems}
               isSubItem={true}
+              canReview={canReview}
+              highlighted={highlightedItemId && String(highlightedItemId) === String(item._id)}
             />
           );
         })}
@@ -1220,6 +1390,7 @@ const handleCancelForm = () => {
             onCancel={handleCancelForm}
             existingMenus={menus}
             parentMenu={currentParentMenu}
+            canReview={canReview}
           />
         </div>
       );
@@ -1352,6 +1523,7 @@ const handleCancelForm = () => {
           onCancel={handleCancelForm}
           existingMenus={menus}
           parentMenu={currentParentMenu}
+          canReview={canReview}
         />
       </div>
     );
@@ -1484,6 +1656,7 @@ const handleCancelForm = () => {
                     onCancel={handleCancelForm}
                     existingMenus={menus}
                     parentMenu={currentParentMenu}
+                    canReview={canReview}
                   />
                 </div>
               ) : (

@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 
-export default function AddMenuItemForm({ menu, onSave, onCancel, existingMenus = [], parentMenu = null }) {
+export default function AddMenuItemForm({
+  menu,
+  onSave,
+  onCancel,
+  existingMenus = [],
+  parentMenu = null,
+  canReview = false
+}) {
   const [formData, setFormData] = useState({
     menu_name_en: '',
     menu_name_kn: '',
@@ -56,7 +63,7 @@ export default function AddMenuItemForm({ menu, onSave, onCancel, existingMenus 
         url_en: menu.url_en || menu.url || '',
         redirect_url: menu.redirect_url || '',
         parent_id: menu.parent_id || 0,
-        status: menu.status || 'Created',
+        status: canReview ? (menu.status || 'Created') : 'Created',
         order_no: menu.order_no || menu.order || 0
       });
     }
@@ -119,10 +126,10 @@ export default function AddMenuItemForm({ menu, onSave, onCancel, existingMenus 
     // They will be treated as menu containers
     
     // Clear conflicting fields
-    const submissionData = { ...formData };
-    if (formData.redirect_url) {
+    const submissionData = { ...formData, status: canReview ? formData.status : 'Created' };
+    if (submissionData.redirect_url) {
       submissionData.url_en = ''; // Clear internal URL when redirect URL is provided
-    } else if (formData.url_en) {
+    } else if (submissionData.url_en) {
       submissionData.redirect_url = ''; // Clear redirect URL when internal URL is provided
     }
     // If both are empty, keep them empty for menu items
@@ -316,7 +323,7 @@ export default function AddMenuItemForm({ menu, onSave, onCancel, existingMenus 
         </div>
 
         {/* Status dropdown - only show in edit mode */}
-        {menu && (
+        {menu && canReview && (
           <div className="form-group">
             <label>Status</label>
             <select
@@ -325,9 +332,27 @@ export default function AddMenuItemForm({ menu, onSave, onCancel, existingMenus 
               onChange={handleChange}
               className="form-control"
             >
-              <option value="Created">Created</option>
+              <option value="Created">Pending</option>
               <option value="Approved">Approved</option>
+              <option value="Rejected">Rejected</option>
             </select>
+          </div>
+        )}
+        {menu && !canReview && (
+          <div className="form-group">
+            <label>Status</label>
+            <div
+              style={{
+                padding: '10px 12px',
+                borderRadius: '6px',
+                background: '#f9fafb',
+                border: '1px solid #e5e7eb',
+                color: '#6b7280',
+                fontSize: '14px'
+              }}
+            >
+              Pending (requires admin approval)
+            </div>
           </div>
         )}
 
