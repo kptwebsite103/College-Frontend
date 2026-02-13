@@ -31,6 +31,12 @@ export function listActiveHomeSections(params = {}) {
   return apiRequest(`/api/home-sections/active${suffix}`);
 }
 
+export function listPublicAnnouncements(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  const suffix = query ? `?${query}` : '';
+  return apiRequest(`/api/pages/public/announcements${suffix}`);
+}
+
 export function createHomeSection(sectionData) {
   return apiRequest('/api/home-sections', {
     method: 'POST',

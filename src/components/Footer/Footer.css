@@ -2,7 +2,7 @@
 .site-footer {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f4c81 100%);
   color: #ffffff;
-  font-family: 'Playfair Display', 'Georgia', serif;
+  font-family: var(--app-font-family);
   position: relative;
   width: 100%;
 }

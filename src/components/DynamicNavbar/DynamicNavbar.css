@@ -11,7 +11,7 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: background 0.3s ease;
   width: 100%;
-  font-family: 'Playfair Display', 'Georgia', serif;
+  font-family: var(--app-font-family);
 }
 
 .navbar-container {
@@ -84,7 +84,7 @@
   white-space: nowrap;
   border-radius: 8px;
   box-sizing: border-box;
-  font-family: 'Playfair Display', 'Georgia', serif;
+  font-family: var(--app-font-family);
 }
 
 /* Make ALL top-level menu items bold and larger */
@@ -203,7 +203,7 @@
 
   .dropdown .nav-link {
     padding-left: 32px !important;
-    font-family: 'Playfair Display', 'Georgia', serif;
+    font-family: var(--app-font-family);
     font-size: 12px;
     font-weight: 700;
     font-style: normal;
@@ -221,7 +221,7 @@
 
   .nested-dropdown .nav-link {
     padding-left: 52px;
-    font-family: 'Playfair Display', 'Georgia', serif;
+    font-family: var(--app-font-family);
     font-size: 12px;
     font-weight: 700;
     font-style: normal;
@@ -342,7 +342,7 @@
 .dropdown .nav-link {
   width: 100%;
   padding: 8px 24px 8px 32px !important;
-  font-family: 'Playfair Display', 'Georgia', serif;
+  font-family: var(--app-font-family);
   font-size: 12px;
   font-weight: 700;
   font-style: normal;

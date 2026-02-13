@@ -1,7 +1,9 @@
+@import url('https://fonts.cdnfonts.com/css/google-sans');
 @import './styles/auth.css';
 @import './components/Footer/Footer.css';
 
 :root {
+  --app-font-family: 'Google Sans', 'Google Sans Text', 'Product Sans', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   --primary-color: #3b82f6;
   --primary-hover: #2563eb;
   --text-strong: #1a1a1a;
@@ -25,7 +27,7 @@
 }
 
 body {
-  font-family: 'Playfair Display', 'Georgia', serif;
+  font-family: var(--app-font-family);
   line-height: 1.5;
   color: var(--text-soft);
   background-color: #f9fafb;

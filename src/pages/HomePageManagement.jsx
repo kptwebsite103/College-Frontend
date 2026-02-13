@@ -3,13 +3,67 @@ import {
   listHomeSections,
   createHomeSection,
   updateHomeSection,
-  deleteHomeSection
+  deleteHomeSection,
+  listMedia
 } from '../api/resources.js';
 
 const sectionTypes = [
   { value: 'slider', label: 'Hero Carousel (Slides)' },
   { value: 'banner', label: 'Hero Banner' },
   { value: 'block', label: 'Custom HTML (Carousel)' }
+];
+
+const defaultHomeSections = [
+  {
+    type: 'slider',
+    title: { en: 'Welcome Banner', kn: '' },
+    active: true,
+    order: 1,
+    slides: [
+      {
+        image: 'https://picsum.photos/1200/500?random=31',
+        title: { en: 'Welcome to Our College', kn: '' },
+        description: { en: 'Excellence in education and innovation.', kn: '' },
+        link: '/home',
+        order: 1
+      },
+      {
+        image: 'https://picsum.photos/1200/500?random=32',
+        title: { en: 'Admissions Open', kn: '' },
+        description: { en: 'Apply now for the upcoming academic year.', kn: '' },
+        link: '/home',
+        order: 2
+      }
+    ]
+  },
+  {
+    type: 'banner',
+    title: { en: 'Latest Announcements', kn: '' },
+    active: true,
+    order: 2,
+    bannerImage: 'https://picsum.photos/1200/500?random=33',
+    bannerDescription: { en: 'Keep track of the latest campus updates and notices.', kn: '' },
+    bannerLink: '/home'
+  },
+  {
+    type: 'block',
+    title: { en: 'Photo Gallery', kn: '' },
+    active: true,
+    order: 3,
+    blockContent: {
+      en: `
+        <section style="padding:16px 0;">
+          <h2 style="margin-bottom:10px;">Photo Gallery</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+            <img src="https://picsum.photos/400/260?random=41" alt="Gallery 1" style="width:100%;border-radius:10px;object-fit:cover;" />
+            <img src="https://picsum.photos/400/260?random=42" alt="Gallery 2" style="width:100%;border-radius:10px;object-fit:cover;" />
+            <img src="https://picsum.photos/400/260?random=43" alt="Gallery 3" style="width:100%;border-radius:10px;object-fit:cover;" />
+          </div>
+        </section>
+      `,
+      kn: ''
+    }
+  }
 ];
 
 const sampleCarouselHtml = `
@@ -84,12 +138,33 @@ function getTitle(section) {
   return section.title?.en || section.title?.kn || 'Untitled';
 }
 
+function normalizeMediaEntry(item) {
+  if (!item) return null;
+  const url = item.url || item.secure_url || '';
+  if (!url) return null;
+  return {
+    id: item._id || item.id || url,
+    title: item.title || item.filename || item.originalFilename || item.name || 'Untitled',
+    type: String(item.type || '').toLowerCase(),
+    url,
+    thumbnail: item.thumbnailUrl || item.thumbnail || url,
+    createdAt: item.createdAt || ''
+  };
+}
+
+function isImageMedia(item) {
+  if (!item?.url) return false;
+  if (item.type === 'image') return true;
+  return /\.(avif|bmp|gif|jpe?g|png|svg|webp)(\?|#|$)/i.test(item.url);
+}
+
 export default function HomePageManagement() {
   const [sections, setSections] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingSection, setEditingSection] = useState(null);
   const [notification, setNotification] = useState({ show: false, type: '', message: '' });
   const [loading, setLoading] = useState(true);
+  const [restoringDefaults, setRestoringDefaults] = useState(false);
 
   const showNotification = (type, message) => {
     setNotification({ show: true, type, message });
@@ -154,6 +229,22 @@ export default function HomePageManagement() {
     } catch (error) {
       console.error('Failed to save section:', error);
       showNotification('error', 'Failed to save section.');
+    }
+  };
+
+  const handleRestoreDefaultComponents = async () => {
+    try {
+      setRestoringDefaults(true);
+      for (const payload of defaultHomeSections) {
+        await createHomeSection(payload);
+      }
+      showNotification('success', 'Default homepage components restored.');
+      await loadSections();
+    } catch (error) {
+      console.error('Failed to restore default homepage sections:', error);
+      showNotification('error', 'Failed to restore default homepage components.');
+    } finally {
+      setRestoringDefaults(false);
     }
   };
 
@@ -265,25 +356,87 @@ export default function HomePageManagement() {
         </div>
       ) : null}
 
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '600', color: '#1F2937' }}>
-          Homepage Management
-        </h1>
-        <p style={{ margin: '8px 0 0', color: '#6B7280', fontSize: '14px' }}>
-          Manage homepage sections and their order
-        </p>
+      <div
+        style={{
+          marginBottom: '24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: 12,
+          flexWrap: 'wrap'
+        }}
+      >
+        <div>
+          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '600', color: '#1F2937' }}>
+            Homepage Management
+          </h1>
+          <p style={{ margin: '8px 0 0', color: '#6B7280', fontSize: '14px' }}>
+            Manage homepage sections and their order
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleAddSection}
+          style={{
+            padding: '10px 16px',
+            border: 'none',
+            borderRadius: '8px',
+            background: '#2563EB',
+            color: 'white',
+            fontSize: '14px',
+            fontWeight: 600,
+            cursor: 'pointer'
+          }}
+        >
+          Add Section
+        </button>
       </div>
 
       {loading ? (
         <div style={{ padding: '16px', color: '#6B7280' }}>Loading sections...</div>
       ) : (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-            gap: '20px'
-          }}
-        >
+        <div>
+          {sections.length === 0 ? (
+            <div
+              style={{
+                background: '#F9FAFB',
+                border: '1px dashed #D1D5DB',
+                borderRadius: '14px',
+                padding: '20px',
+                marginBottom: '20px'
+              }}
+            >
+              <div style={{ fontWeight: 600, color: '#111827', marginBottom: 8 }}>
+                Homepage components are currently empty.
+              </div>
+              <div style={{ color: '#6B7280', fontSize: 14, marginBottom: 12 }}>
+                Restore the default set (hero banner, announcements, photo gallery) with one click.
+              </div>
+              <button
+                onClick={handleRestoreDefaultComponents}
+                disabled={restoringDefaults}
+                style={{
+                  padding: '10px 14px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: restoringDefaults ? '#9CA3AF' : '#2563EB',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: restoringDefaults ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {restoringDefaults ? 'Restoring...' : 'Restore Default Components'}
+              </button>
+            </div>
+          ) : null}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gap: '20px'
+            }}
+          >
           {sections.map((section, index) => (
             <div
               key={section._id}
@@ -477,6 +630,7 @@ export default function HomePageManagement() {
             <span style={{ fontSize: '14px', fontWeight: '500', color: '#6B7280' }}>Add New Section</span>
           </div>
         </div>
+        </div>
       )}
     </div>
   );
@@ -520,6 +674,61 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
           }
         ]
   });
+  const [mediaItems, setMediaItems] = useState([]);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaError, setMediaError] = useState('');
+  const [pickerTarget, setPickerTarget] = useState(null);
+
+  const loadImageMedia = async () => {
+    setMediaLoading(true);
+    setMediaError('');
+    try {
+      const data = await listMedia();
+      const normalized = Array.isArray(data)
+        ? data.map(normalizeMediaEntry).filter(isImageMedia)
+        : [];
+      setMediaItems(normalized);
+    } catch (error) {
+      console.error('Failed to load media library:', error);
+      setMediaItems([]);
+      setMediaError('Failed to load media library.');
+    } finally {
+      setMediaLoading(false);
+    }
+  };
+
+  const openMediaPicker = (target) => {
+    setPickerTarget(target);
+    if (!mediaLoading && mediaItems.length === 0) {
+      loadImageMedia();
+    }
+  };
+
+  const closeMediaPicker = () => {
+    setPickerTarget(null);
+  };
+
+  const handleSelectMedia = (url) => {
+    if (!pickerTarget || !url) return;
+    if (pickerTarget.kind === 'banner') {
+      setFormData((prev) => ({ ...prev, bannerImage: url }));
+    } else if (pickerTarget.kind === 'slide') {
+      setFormData((prev) => {
+        const slides = prev.slides.map((slide, slideIndex) =>
+          slideIndex === pickerTarget.index ? { ...slide, image: url } : slide
+        );
+        return { ...prev, slides };
+      });
+    }
+    closeMediaPicker();
+  };
+
+  const getCurrentPickerValue = () => {
+    if (!pickerTarget) return '';
+    if (pickerTarget.kind === 'banner') return formData.bannerImage || '';
+    if (pickerTarget.kind === 'slide') return formData.slides[pickerTarget.index]?.image || '';
+    return '';
+  };
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
@@ -571,6 +780,7 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
   };
 
   const removeSlide = (index) => {
+    closeMediaPicker();
     setFormData((prev) => {
       if (prev.slides.length <= 1) return prev;
       const slides = prev.slides.filter((_, slideIndex) => slideIndex !== index);
@@ -583,6 +793,11 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    const cleanString = (value) => {
+      if (typeof value !== 'string') return '';
+      return value.trim();
+    };
+
     const payload = {
       type: formData.type,
       title: {
@@ -594,18 +809,22 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
     };
 
     if (formData.type === 'banner') {
-      payload.bannerImage = formData.bannerImage;
+      const bannerImage = cleanString(formData.bannerImage);
+      if (!bannerImage) {
+        alert('Banner image is required.');
+        return;
+      }
+      payload.bannerImage = bannerImage;
       payload.bannerDescription = {
         en: formData.bannerDescription_en,
         kn: formData.bannerDescription_kn
       };
-      if (formData.bannerLink) payload.bannerLink = formData.bannerLink;
+      const bannerLink = cleanString(formData.bannerLink);
+      if (bannerLink) payload.bannerLink = bannerLink;
     }
 
     if (formData.type === 'slider') {
       payload.slides = formData.slides.map((slide, index) => ({
-        image: slide.image,
-        link: slide.link,
         order: Number(slide.order) || index + 1,
         title: {
           en: slide.title?.en || '',
@@ -614,7 +833,9 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
         description: {
           en: slide.description?.en || '',
           kn: slide.description?.kn || ''
-        }
+        },
+        ...(cleanString(slide.image) ? { image: cleanString(slide.image) } : {}),
+        ...(cleanString(slide.link) ? { link: cleanString(slide.link) } : {})
       }));
     }
 
@@ -756,23 +977,60 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
           <>
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
-                Banner Image URL
+                Banner Image
               </label>
-              <input
-                type="url"
-                name="bannerImage"
-                value={formData.bannerImage}
-                onChange={handleChange}
-                placeholder="https://example.com/hero.jpg"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
-                }}
-              />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+                <input
+                  type="url"
+                  name="bannerImage"
+                  value={formData.bannerImage}
+                  onChange={handleChange}
+                  placeholder="https://example.com/hero.jpg"
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    padding: '12px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => openMediaPicker({ kind: 'banner' })}
+                  style={{
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    background: '#F9FAFB',
+                    color: '#374151',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Select from Media
+                </button>
+              </div>
+              <div style={{ marginTop: 6, fontSize: 12, color: '#6B7280' }}>
+                Paste a URL or choose an image from your media library.
+              </div>
+              {formData.bannerImage ? (
+                <div style={{ marginTop: 10 }}>
+                  <img
+                    src={formData.bannerImage}
+                    alt="Banner preview"
+                    style={{
+                      width: '100%',
+                      maxHeight: 180,
+                      objectFit: 'cover',
+                      borderRadius: 10,
+                      border: '1px solid #E5E7EB'
+                    }}
+                  />
+                </div>
+              ) : null}
             </div>
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
@@ -859,20 +1117,52 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                   </button>
                 </div>
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13 }}>Image URL</label>
-                  <input
-                    type="url"
-                    value={slide.image}
-                    onChange={(event) => handleSlideChange(index, 'image', event.target.value)}
-                    placeholder="https://example.com/slide.jpg"
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #D1D5DB',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                  />
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13 }}>Slide Image</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="url"
+                      value={slide.image}
+                      onChange={(event) => handleSlideChange(index, 'image', event.target.value)}
+                      placeholder="https://example.com/slide.jpg"
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        padding: '10px',
+                        border: '1px solid #D1D5DB',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => openMediaPicker({ kind: 'slide', index })}
+                      style={{
+                        border: '1px solid #D1D5DB',
+                        borderRadius: '8px',
+                        background: '#F9FAFB',
+                        color: '#374151',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      Media
+                    </button>
+                  </div>
+                  {slide.image ? (
+                    <img
+                      src={slide.image}
+                      alt={`Slide ${index + 1} preview`}
+                      style={{
+                        marginTop: 8,
+                        width: '100%',
+                        maxHeight: 130,
+                        objectFit: 'cover',
+                        borderRadius: 8,
+                        border: '1px solid #E5E7EB'
+                      }}
+                    />
+                  ) : null}
                 </div>
                 <div style={{ marginBottom: 12 }}>
                   <label style={{ display: 'block', marginBottom: 6, fontSize: 13 }}>
@@ -1082,6 +1372,140 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
           </button>
         </div>
       </form>
+
+      {pickerTarget ? (
+        <div
+          onClick={closeMediaPicker}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.45)',
+            zIndex: 2200,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px'
+          }}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: 'min(900px, 96vw)',
+              maxHeight: '82vh',
+              overflow: 'hidden',
+              borderRadius: 12,
+              background: '#FFFFFF',
+              border: '1px solid #E5E7EB',
+              boxShadow: '0 20px 45px rgba(0, 0, 0, 0.25)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <div
+              style={{
+                padding: '14px 16px',
+                borderBottom: '1px solid #E5E7EB',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: '#111827' }}>Select Image From Media Library</div>
+                <div style={{ fontSize: 12, color: '#6B7280' }}>
+                  Click an image to use it for {pickerTarget.kind === 'banner' ? 'the banner' : `slide ${pickerTarget.index + 1}`}.
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={loadImageMedia}
+                  disabled={mediaLoading}
+                  style={{
+                    border: '1px solid #D1D5DB',
+                    borderRadius: 8,
+                    background: '#FFFFFF',
+                    color: '#374151',
+                    fontSize: 13,
+                    cursor: mediaLoading ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Refresh
+                </button>
+                <button
+                  type="button"
+                  onClick={closeMediaPicker}
+                  style={{
+                    border: '1px solid #D1D5DB',
+                    borderRadius: 8,
+                    background: '#FFFFFF',
+                    color: '#374151',
+                    fontSize: 13,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div style={{ padding: 16, overflow: 'auto' }}>
+              {mediaLoading ? (
+                <div style={{ color: '#6B7280', fontSize: 14 }}>Loading media...</div>
+              ) : mediaError ? (
+                <div style={{ color: '#DC2626', fontSize: 14 }}>{mediaError}</div>
+              ) : mediaItems.length === 0 ? (
+                <div style={{ color: '#6B7280', fontSize: 14 }}>
+                  No images found. Upload images in `/admin/media` and retry.
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                    gap: 12
+                  }}
+                >
+                  {mediaItems.map((item) => {
+                    const currentValue = getCurrentPickerValue();
+                    const isActive = currentValue && currentValue === item.url;
+                    return (
+                      <button
+                        type="button"
+                        key={item.id}
+                        onClick={() => handleSelectMedia(item.url)}
+                        style={{
+                          border: isActive ? '2px solid #2563EB' : '1px solid #E5E7EB',
+                          borderRadius: 10,
+                          padding: 8,
+                          background: '#FFFFFF',
+                          cursor: 'pointer',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <img
+                          src={item.thumbnail || item.url}
+                          alt={item.title}
+                          style={{
+                            width: '100%',
+                            height: 100,
+                            objectFit: 'cover',
+                            borderRadius: 8,
+                            border: '1px solid #E5E7EB'
+                          }}
+                        />
+                        <div style={{ marginTop: 8, fontSize: 12, color: '#111827', fontWeight: 600 }}>
+                          {item.title}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

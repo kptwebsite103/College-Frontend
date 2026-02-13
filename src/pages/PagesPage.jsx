@@ -1,11 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
-import { createPage, listPages, deletePage, approvePage, rejectPage, updatePage } from '../api/resources';
+import { createPage, listPages, deletePage, approvePage, rejectPage, updatePage, listMedia } from '../api/resources';
 import { ensureDevAuth } from '../utils/devAuth';
 import { usePermissions } from '../utils/rolePermissions';
 import Popup from '../components/Popup';
 import './UserManagementContent.css';
+
+function stripHtmlTags(html = '') {
+  return String(html || '')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 export default function PagesPage() {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -17,8 +26,14 @@ export default function PagesPage() {
   const [searchParams] = useSearchParams();
   const [highlightedId, setHighlightedId] = useState(null);
   const cardRefs = useRef({});
+  const didAutoOpenRef = useRef(false);
   const { isAdmin, isSuperAdmin } = usePermissions();
   const canReview = isAdmin || isSuperAdmin;
+  const announcementMode = searchParams.get('mode') === 'announcement';
+
+  const hasAnnouncementTag = (page) =>
+    Array.isArray(page?.tags) &&
+    page.tags.some((tag) => String(tag || '').trim().toLowerCase() === 'announcement');
 
   const normalizeStatus = (status) => {
     const value = String(status || '').toLowerCase();
@@ -32,6 +47,14 @@ export default function PagesPage() {
     ensureDevAuth();
     loadPages();
   }, []);
+
+  useEffect(() => {
+    const createMode = searchParams.get('create') === '1';
+    if (!createMode || didAutoOpenRef.current) return;
+    didAutoOpenRef.current = true;
+    setEditingPage(null);
+    setShowAddForm(true);
+  }, [searchParams]);
 
   useEffect(() => {
     const highlightId = searchParams.get('highlight');
@@ -67,6 +90,7 @@ export default function PagesPage() {
   };
 
   const handleAddPage = () => {
+    setEditingPage(null);
     setShowAddForm(true);
   };
 
@@ -169,6 +193,13 @@ export default function PagesPage() {
         return; // Stop execution if route is restricted
       }
 
+      const normalizedTags = Array.isArray(pageData.tags)
+        ? pageData.tags.filter((tag) => String(tag || '').trim())
+        : [];
+      const isAnnouncementTag = normalizedTags.some(
+        (tag) => String(tag || '').trim().toLowerCase() === 'announcement'
+      );
+
       // Transform form data to match database schema
       const finalStatus = canReview ? (pageData.status || 'pending') : 'pending';
       const pagePayload = {
@@ -189,8 +220,24 @@ export default function PagesPage() {
             javascript: pageData.content_kn.javascript || ''
           }
         },
-        status: finalStatus
+        status: finalStatus,
+        tags: normalizedTags
       };
+
+      if (isAnnouncementTag) {
+        pagePayload.announcement = {
+          text: {
+            en: pageData.announcement_text_en || '',
+            kn: pageData.announcement_text_kn || ''
+          },
+          startDate: pageData.announcement_from || null,
+          endDate: pageData.announcement_to || null,
+          attachmentUrl: pageData.announcement_attachment_url || '',
+          attachmentLabel: pageData.announcement_attachment_label || ''
+        };
+      } else {
+        pagePayload.announcement = null;
+      }
       
       if (editingPage) {
         // Update existing page
@@ -241,6 +288,8 @@ export default function PagesPage() {
     );
   };
 
+  const visiblePages = announcementMode ? pages.filter(hasAnnouncementTag) : pages;
+
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
       {/* Notification */}
@@ -262,9 +311,13 @@ export default function PagesPage() {
 
       {/* Header */}
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '600', color: '#1F2937' }}>Pages</h1>
+        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '600', color: '#1F2937' }}>
+          {announcementMode ? 'Announcements' : 'Pages'}
+        </h1>
         <p style={{ margin: '8px 0 0', color: '#6B7280', fontSize: '14px' }}>
-          Manage your website pages
+          {announcementMode
+            ? 'Create and manage announcement items shown on the homepage.'
+            : 'Manage your website pages'}
         </p>
       </div>
 
@@ -277,6 +330,7 @@ export default function PagesPage() {
             showNotification={showNotification}
             editingPage={editingPage}
             canReview={canReview}
+            forceAnnouncement={announcementMode}
           />
         ) : (
           <div style={{
@@ -295,7 +349,7 @@ export default function PagesPage() {
                 <div style={{ fontSize: '16px', marginBottom: '8px' }}>Loading pages...</div>
                 <div style={{ fontSize: '14px' }}>Please wait while we fetch your pages from the database.</div>
               </div>
-            ) : pages.length === 0 ? (
+            ) : visiblePages.length === 0 ? (
               // Empty state
               <div style={{ 
                 gridColumn: '1 / -1', 
@@ -307,10 +361,12 @@ export default function PagesPage() {
               }}>
                 <div style={{ fontSize: '48px', marginBottom: '16px' }}>📄</div>
                 <div style={{ fontSize: '18px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                  No pages created yet
+                  {announcementMode ? 'No announcements created yet' : 'No pages created yet'}
                 </div>
                 <div style={{ fontSize: '14px', color: '#6B7280', marginBottom: '24px' }}>
-                  Create your first page to get started with your website content management.
+                  {announcementMode
+                    ? 'Create your first announcement to show updates on the homepage.'
+                    : 'Create your first page to get started with your website content management.'}
                 </div>
                 <button
                   onClick={handleAddPage}
@@ -326,12 +382,12 @@ export default function PagesPage() {
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  Create Your First Page
+                  {announcementMode ? 'Create First Announcement' : 'Create Your First Page'}
                 </button>
               </div>
             ) : (
               // Pages list
-              pages.map((page) => {
+              visiblePages.map((page) => {
                 const displayStatus = normalizeStatus(page.status);
                 const isPending = displayStatus === 'pending';
                 const isApproved = displayStatus === 'approved';
@@ -444,6 +500,18 @@ export default function PagesPage() {
                       Homepage Route
                     </span>
                   )}
+                  {hasAnnouncementTag(page) && (
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      background: '#DBEAFE',
+                      color: '#1D4ED8'
+                    }}>
+                      Announcement
+                    </span>
+                  )}
                 </div>
 
                 {/* Action buttons */}
@@ -549,12 +617,32 @@ export default function PagesPage() {
   );
 }
 
-function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canReview }) {
+function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canReview, forceAnnouncement = false }) {
+  const formatInputDate = (value) => {
+    if (!value) return '';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toISOString().slice(0, 10);
+  };
+
+  const slugifyText = (value) => String(value || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
   const [formData, setFormData] = useState({
     title_en: '',
     title_kn: '',
     slug: '',
     status: 'pending',
+    tags: forceAnnouncement ? ['announcement'] : [],
+    announcement_text_en: '',
+    announcement_text_kn: '',
+    announcement_from: '',
+    announcement_to: '',
+    announcement_attachment_url: '',
+    announcement_attachment_label: '',
     css: '', // CSS is shared across languages
     content_en: {
       html: '',
@@ -566,6 +654,10 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
     }
   });
   const [formOpen, setFormOpen] = useState(false);
+  const [mediaItems, setMediaItems] = useState([]);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaError, setMediaError] = useState('');
+  const [showAttachmentPicker, setShowAttachmentPicker] = useState(false);
 
   // Populate form when editingPage changes and form is opening
   useEffect(() => {
@@ -575,6 +667,13 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
         title_kn: editingPage.title?.kn || '',
         slug: editingPage.slug || '',
         status: editingPage.status === 'created' ? 'pending' : (editingPage.status || 'pending'),
+        tags: Array.isArray(editingPage.tags) ? editingPage.tags : [],
+        announcement_text_en: editingPage.announcement?.text?.en || stripHtmlTags(editingPage.content?.en?.html || ''),
+        announcement_text_kn: editingPage.announcement?.text?.kn || stripHtmlTags(editingPage.content?.kn?.html || ''),
+        announcement_from: formatInputDate(editingPage.announcement?.startDate),
+        announcement_to: formatInputDate(editingPage.announcement?.endDate),
+        announcement_attachment_url: editingPage.announcement?.attachmentUrl || '',
+        announcement_attachment_label: editingPage.announcement?.attachmentLabel || '',
         css: editingPage.css || '',
         content_en: {
           html: editingPage.content?.en?.html || '',
@@ -607,6 +706,13 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
         title_kn: '',
         slug: '',
         status: 'pending',
+        tags: forceAnnouncement ? ['announcement'] : [],
+        announcement_text_en: '',
+        announcement_text_kn: '',
+        announcement_from: '',
+        announcement_to: '',
+        announcement_attachment_url: '',
+        announcement_attachment_label: '',
         css: '',
         content_en: {
           html: '',
@@ -624,7 +730,7 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
       
       setFormOpen(false);
     }
-  }, [editingPage, formOpen]);
+  }, [editingPage, formOpen, forceAnnouncement]);
   const [language, setLanguage] = useState('en');
   
   // Separate state for English editor
@@ -640,6 +746,71 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const isAnnouncement = Array.isArray(formData.tags)
+    && formData.tags.some((tag) => String(tag || '').trim().toLowerCase() === 'announcement');
+  const showAnnouncementFields = forceAnnouncement || isAnnouncement;
+
+  const handleAnnouncementToggle = (checked) => {
+    setFormData((prev) => {
+      const nextTags = Array.isArray(prev.tags) ? [...prev.tags] : [];
+      const hasTag = nextTags.some((tag) => String(tag || '').trim().toLowerCase() === 'announcement');
+      if (checked && !hasTag) {
+        nextTags.push('announcement');
+      }
+      if (!checked && hasTag) {
+        return {
+          ...prev,
+          tags: nextTags.filter((tag) => String(tag || '').trim().toLowerCase() !== 'announcement')
+        };
+      }
+      return { ...prev, tags: nextTags };
+    });
+  };
+
+  const loadMediaLibrary = async () => {
+    setMediaLoading(true);
+    setMediaError('');
+    try {
+      const data = await listMedia();
+      const normalized = Array.isArray(data)
+        ? data
+            .map((item) => ({
+              id: item._id || item.id || item.url,
+              title: item.title || item.filename || item.name || 'Untitled',
+              type: item.type || item.format || '',
+              url: item.url || item.secure_url || '',
+              thumb: item.thumbnailUrl || item.thumbnail || item.url || item.secure_url || ''
+            }))
+            .filter((item) => item.url)
+        : [];
+      setMediaItems(normalized);
+    } catch (error) {
+      console.error('Failed to load media for attachment picker:', error);
+      setMediaItems([]);
+      setMediaError('Failed to load media library.');
+    } finally {
+      setMediaLoading(false);
+    }
+  };
+
+  const openAttachmentPicker = () => {
+    setShowAttachmentPicker(true);
+    if (mediaItems.length === 0 && !mediaLoading) {
+      loadMediaLibrary();
+    }
+  };
+
+  const selectAttachment = (item) => {
+    if (!item?.url) return;
+    setFormData((prev) => ({
+      ...prev,
+      announcement_attachment_url: item.url,
+      announcement_attachment_label:
+        prev.announcement_attachment_label || item.title || 'Attachment'
+    }));
+    setShowAttachmentPicker(false);
   };
 
   // Parse single file content into HTML and JS (CSS extracted separately)
@@ -829,14 +1000,51 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
-    // Validate: Slug is required
-    if (!formData.slug) {
-      showNotification('error', 'Slug URL is required.');
-      return;
+
+    const payload = { ...formData };
+
+    if (!payload.slug) {
+      if (showAnnouncementFields) {
+        const base = slugifyText(payload.title_en || payload.title_kn || 'announcement');
+        payload.slug = base ? `announcement-${base}` : `announcement-${Date.now()}`;
+      } else {
+        showNotification('error', 'Slug URL is required.');
+        return;
+      }
     }
-    
-    onSave(formData);
+
+    if (showAnnouncementFields) {
+      const textEn = String(payload.announcement_text_en || '').trim();
+      const textKn = String(payload.announcement_text_kn || '').trim();
+      const from = payload.announcement_from;
+      const to = payload.announcement_to;
+
+      if (!textEn && !textKn) {
+        showNotification('error', 'Announcement text is required.');
+        return;
+      }
+      if (!from || !to) {
+        showNotification('error', 'Announcement start and end date are required.');
+        return;
+      }
+      if (new Date(from) > new Date(to)) {
+        showNotification('error', 'Announcement end date must be after start date.');
+        return;
+      }
+
+      payload.tags = Array.from(new Set([...(payload.tags || []), 'announcement']));
+      payload.content_en = {
+        html: textEn ? `<p>${textEn.replace(/\n/g, '<br/>')}</p>` : '',
+        javascript: ''
+      };
+      payload.content_kn = {
+        html: textKn ? `<p>${textKn.replace(/\n/g, '<br/>')}</p>` : '',
+        javascript: ''
+      };
+      payload.css = '';
+    }
+
+    onSave(payload);
   };
 
   const renderEnglishContentEditor = () => {
@@ -1414,9 +1622,28 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
             </div>
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
-                Content (English)
+                {showAnnouncementFields ? 'Announcement Text (English)' : 'Content (English)'}
               </label>
-              {renderEnglishContentEditor()}
+              {showAnnouncementFields ? (
+                <textarea
+                  name="announcement_text_en"
+                  value={formData.announcement_text_en}
+                  onChange={handleChange}
+                  rows={8}
+                  placeholder="Enter announcement text in English"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box',
+                    resize: 'vertical'
+                  }}
+                />
+              ) : (
+                renderEnglishContentEditor()
+              )}
             </div>
           </div>
         ) : (
@@ -1445,9 +1672,28 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
             </div>
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
-                Content (Kannada)
+                {showAnnouncementFields ? 'Announcement Text (Kannada)' : 'Content (Kannada)'}
               </label>
-              {renderKannadaContentEditor()}
+              {showAnnouncementFields ? (
+                <textarea
+                  name="announcement_text_kn"
+                  value={formData.announcement_text_kn}
+                  onChange={handleChange}
+                  rows={8}
+                  placeholder="Enter announcement text in Kannada"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box',
+                    resize: 'vertical'
+                  }}
+                />
+              ) : (
+                renderKannadaContentEditor()
+              )}
             </div>
           </div>
         )}
@@ -1519,6 +1765,148 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
           </div>
         </div>
 
+        {showAnnouncementFields ? (
+          <>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '20px',
+                marginBottom: '20px'
+              }}
+            >
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
+                  From Date
+                </label>
+                <input
+                  type="date"
+                  name="announcement_from"
+                  value={formData.announcement_from}
+                  onChange={handleChange}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
+                  To Date
+                </label>
+                <input
+                  type="date"
+                  name="announcement_to"
+                  value={formData.announcement_to}
+                  onChange={handleChange}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
+                Attachable (optional)
+              </label>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+                <input
+                  type="url"
+                  name="announcement_attachment_url"
+                  value={formData.announcement_attachment_url}
+                  onChange={handleChange}
+                  placeholder="https://example.com/file"
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    padding: '12px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={openAttachmentPicker}
+                  style={{
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    background: '#F9FAFB',
+                    color: '#374151',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Select from Media
+                </button>
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <input
+                  type="text"
+                  name="announcement_attachment_label"
+                  value={formData.announcement_attachment_label}
+                  onChange={handleChange}
+                  placeholder="Attachment label (optional)"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              {formData.announcement_attachment_url ? (
+                <div style={{ marginTop: 8 }}>
+                  <a href={formData.announcement_attachment_url} target="_blank" rel="noreferrer">
+                    Open selected attachment
+                  </a>
+                </div>
+              ) : null}
+            </div>
+          </>
+        ) : null}
+
+        <div style={{ marginBottom: '20px' }}>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              fontWeight: '500',
+              color: '#374151',
+              fontSize: '14px'
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={isAnnouncement}
+              onChange={(event) => handleAnnouncementToggle(event.target.checked)}
+              disabled={forceAnnouncement}
+            />
+            Show this item in homepage announcements
+          </label>
+          {forceAnnouncement ? (
+            <div style={{ marginTop: 6, fontSize: 12, color: '#6B7280' }}>
+              Announcement mode is active from dashboard, so this is automatically enabled.
+            </div>
+          ) : null}
+        </div>
+
         {/* Action Buttons */}
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
           <button
@@ -1554,6 +1942,142 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
           </button>
         </div>
       </form>
+
+      {showAttachmentPicker ? (
+        <div
+          onClick={() => setShowAttachmentPicker(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 2200,
+            background: 'rgba(0, 0, 0, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 24
+          }}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: 'min(920px, 96vw)',
+              maxHeight: '82vh',
+              overflow: 'hidden',
+              borderRadius: 12,
+              background: '#FFFFFF',
+              border: '1px solid #E5E7EB',
+              boxShadow: '0 20px 45px rgba(0, 0, 0, 0.25)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '14px 16px',
+                borderBottom: '1px solid #E5E7EB'
+              }}
+            >
+              <div style={{ fontSize: 16, fontWeight: 600, color: '#111827' }}>Select Attachable From Media</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={loadMediaLibrary}
+                  disabled={mediaLoading}
+                  style={{
+                    border: '1px solid #D1D5DB',
+                    borderRadius: 8,
+                    background: '#FFFFFF',
+                    color: '#374151',
+                    fontSize: 13,
+                    cursor: mediaLoading ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Refresh
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAttachmentPicker(false)}
+                  style={{
+                    border: '1px solid #D1D5DB',
+                    borderRadius: 8,
+                    background: '#FFFFFF',
+                    color: '#374151',
+                    fontSize: 13,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div style={{ padding: 16, overflow: 'auto' }}>
+              {mediaLoading ? (
+                <div style={{ color: '#6B7280', fontSize: 14 }}>Loading media...</div>
+              ) : mediaError ? (
+                <div style={{ color: '#DC2626', fontSize: 14 }}>{mediaError}</div>
+              ) : mediaItems.length === 0 ? (
+                <div style={{ color: '#6B7280', fontSize: 14 }}>
+                  No media found. Upload files from `/admin/media`.
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                    gap: 12
+                  }}
+                >
+                  {mediaItems.map((item) => (
+                    <button
+                      type="button"
+                      key={item.id}
+                      onClick={() => selectAttachment(item)}
+                      style={{
+                        border: '1px solid #E5E7EB',
+                        borderRadius: 10,
+                        padding: 10,
+                        background: '#FFFFFF',
+                        cursor: 'pointer',
+                        textAlign: 'left'
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: 96,
+                          borderRadius: 8,
+                          background: '#F3F4F6',
+                          border: '1px solid #E5E7EB',
+                          overflow: 'hidden',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        {String(item.type || '').toLowerCase() === 'image' ? (
+                          <img
+                            src={item.thumb}
+                            alt={item.title}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <span style={{ fontSize: 12, color: '#6B7280', padding: 10, textAlign: 'center' }}>
+                            {item.type || 'file'}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: '#111827' }}>{item.title}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

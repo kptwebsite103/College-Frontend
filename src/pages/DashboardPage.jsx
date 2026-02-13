@@ -364,7 +364,7 @@ export default function DashboardPage() {
 
       <div className="dashboard-tabs">
         <Link className="dash-tab red" to="/pages">Latest News</Link>
-        <Link className="dash-tab orange" to="/pages">Announcements</Link>
+        <Link className="dash-tab orange" to="/admin/pages?mode=announcement">Announcements</Link>
         <Link className="dash-tab blue" to="/departments">Feedbacks</Link>
         <Link className="dash-tab dark" to="/menus">+ Add Social Media</Link>
       </div>
