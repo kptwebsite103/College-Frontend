@@ -15,9 +15,11 @@ export default function MediaPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState('');
+  const [uploadSuccess, setUploadSuccess] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [uploadTitle, setUploadTitle] = useState('');
-  const fileInputRef = useRef(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [selectedUploadFile, setSelectedUploadFile] = useState(null);
 
   useEffect(() => {
     return () => {
@@ -43,9 +45,9 @@ export default function MediaPage() {
     loadMediaItems();
   }, []);
 
-  const loadMediaItems = async () => {
+  const loadMediaItems = async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const mediaData = await listMedia();
       const normalized = Array.isArray(mediaData)
         ? mediaData.map(normalizeMediaItem).filter(Boolean)
@@ -58,22 +60,26 @@ export default function MediaPage() {
         setMediaItems([]);
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
-  const handleFileSelect = (event) => {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      uploadFileHandler(files[0]);
-    }
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+  const openUploadModal = () => {
+    if (uploading) return;
+    setUploadError('');
+    setUploadSuccess('');
+    setSelectedUploadFile(null);
+    setUploadTitle('');
+    setShowUploadModal(true);
   };
 
-  const uploadFileHandler = async (file) => {
+  const closeUploadModal = () => {
+    if (uploading) return;
+    setShowUploadModal(false);
+    setSelectedUploadFile(null);
+  };
+
+  const uploadFileHandler = async (file, title) => {
     console.log('📁 File selected for upload:', {
       name: file.name,
       size: formatFileSize(file.size),
@@ -85,12 +91,12 @@ export default function MediaPage() {
       setUploading(true);
       setUploadProgress(0);
       setUploadError('');
+      setUploadSuccess('');
 
       // Compress image if applicable
       let processedFile = file;
       if (file.type.startsWith('image/')) {
         console.log('🖼️ Image compression started for:', file.name);
-        setUploadError('Compressing image...');
         
         const originalSize = file.size;
         processedFile = await compressImage(file, 0.8, 1920, 1080);
@@ -104,17 +110,17 @@ export default function MediaPage() {
           dimensions: processedFile.type.startsWith('image/') ? 'max 1920x1080' : 'N/A'
         });
         
-        setUploadError('');
       } else {
         console.log('📄 Non-image file, skipping compression:', file.name);
       }
 
       // Optimized upload options
+      const trimmedTitle = String(title || '').trim();
       const uploadOptions = {
         maxFileSize: 50 * 1024 * 1024, // 50MB
         timeout: 60000, // 60 seconds for better reliability
         maxRetries: 3,
-        title: uploadTitle?.trim() || undefined
+        title: trimmedTitle || undefined
       };
 
       console.log('⚙️ Starting upload with options:', uploadOptions);
@@ -134,7 +140,10 @@ export default function MediaPage() {
         if (normalized) {
           setMediaItems((prev) => [normalized, ...prev.filter((item) => item.id !== normalized.id)]);
         }
-        loadMediaItems();
+        await loadMediaItems({ silent: true });
+        setUploadSuccess('Upload completed successfully.');
+        setShowUploadModal(false);
+        setSelectedUploadFile(null);
         setUploadTitle('');
       }
     } catch (error) {
@@ -146,6 +155,7 @@ export default function MediaPage() {
 
       if (isMounted.current) {
         setUploadError(error.message || 'Upload failed. Please try again.');
+        setUploadSuccess('');
       }
     } finally {
       if (isMounted.current) {
@@ -153,6 +163,15 @@ export default function MediaPage() {
         setUploadProgress(0);
       }
     }
+  };
+
+  const handleUploadSubmit = async (event) => {
+    event.preventDefault();
+    if (!selectedUploadFile) {
+      setUploadError('Please select a file to upload.');
+      return;
+    }
+    await uploadFileHandler(selectedUploadFile, uploadTitle);
   };
 
   function formatFileSize(bytes) {
@@ -395,7 +414,7 @@ export default function MediaPage() {
             </div>
             
               <button
-                onClick={() => fileInputRef.current?.click()}
+                onClick={openUploadModal}
                 disabled={uploading}
                 style={{
                   padding: '10px 20px',
@@ -435,28 +454,6 @@ export default function MediaPage() {
                 </>
                 )}
               </button>
-
-              <input
-                type="text"
-                value={uploadTitle}
-                onChange={(event) => setUploadTitle(event.target.value)}
-                placeholder="Title (optional)"
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid #D1D5DB',
-                  fontSize: '14px',
-                  minWidth: '220px'
-                }}
-              />
-            
-            <input
-              ref={fileInputRef}
-              type="file"
-              onChange={handleFileSelect}
-              accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-              style={{ display: 'none' }}
-            />
             
             <div className="dropdown-container" style={{ position: 'relative' }}>
               <button 
@@ -496,6 +493,18 @@ export default function MediaPage() {
               }}>
                 <div 
                   className={`dropdown-item ${filter === 'all' ? 'selected' : ''}`}
+                  style={{ 
+                    padding: '12px 16px', 
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    borderBottom: '1px solid #f0f0f0',
+                    background: filter === 'all' ? '#007bff' : 'transparent',
+                    color: filter === 'all' ? 'white' : '#000000'
+                  }}
+                  onClick={() => {
+                    setFilter('all');
+                    setIsDropdownOpen(false);
+                  }}
                 >
                   All Files
                 </div>
@@ -589,6 +598,37 @@ export default function MediaPage() {
               background: 'none',
               border: 'none',
               color: '#DC2626',
+              fontSize: '18px',
+              cursor: 'pointer',
+              padding: '0',
+              marginLeft: '10px'
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {uploadSuccess && (
+        <div style={{
+          background: '#DCFCE7',
+          border: '1px solid #16A34A',
+          borderRadius: '6px',
+          padding: '12px 16px',
+          marginBottom: '20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <span style={{ fontSize: '14px', color: '#166534' }}>
+            {uploadSuccess}
+          </span>
+          <button
+            onClick={() => setUploadSuccess('')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#166534',
               fontSize: '18px',
               cursor: 'pointer',
               padding: '0',
@@ -891,7 +931,7 @@ export default function MediaPage() {
             {searchTerm ? 'Try adjusting your search terms' : 'No files have been uploaded yet'}
           </div>
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={openUploadModal}
             style={{
               padding: '10px 20px',
               border: 'none',
@@ -905,6 +945,148 @@ export default function MediaPage() {
           >
             Upload Your First File
           </button>
+        </div>
+      )}
+
+      {showUploadModal && (
+        <div
+          onClick={closeUploadModal}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 2100,
+            background: 'rgba(0, 0, 0, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px'
+          }}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: 'min(560px, 96vw)',
+              background: '#FFFFFF',
+              border: '1px solid #E5E7EB',
+              borderRadius: '12px',
+              boxShadow: '0 20px 44px rgba(0, 0, 0, 0.22)'
+            }}
+          >
+            <form onSubmit={handleUploadSubmit}>
+              <div style={{ padding: '16px 18px', borderBottom: '1px solid #E5E7EB' }}>
+                <div style={{ fontSize: '18px', fontWeight: 600, color: '#111827' }}>Upload Media</div>
+                <div style={{ marginTop: 4, fontSize: '13px', color: '#6B7280' }}>
+                  Add a title and choose a file to upload.
+                </div>
+              </div>
+
+              <div style={{ padding: '16px 18px' }}>
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: '13px', color: '#374151', fontWeight: 600 }}>
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    value={uploadTitle}
+                    onChange={(event) => setUploadTitle(event.target.value)}
+                    placeholder="Enter a file title (optional)"
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid #D1D5DB',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 8 }}>
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: '13px', color: '#374151', fontWeight: 600 }}>
+                    File
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
+                    onChange={(event) => {
+                      const file = event.target.files && event.target.files[0] ? event.target.files[0] : null;
+                      setSelectedUploadFile(file);
+                    }}
+                    style={{ width: '100%', fontSize: '14px' }}
+                  />
+                </div>
+
+                {selectedUploadFile ? (
+                  <div style={{ marginTop: 8, fontSize: '12px', color: '#6B7280' }}>
+                    Selected: {selectedUploadFile.name} ({formatFileSize(selectedUploadFile.size)})
+                  </div>
+                ) : null}
+
+                {uploading ? (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: '13px', color: '#374151', marginBottom: 6 }}>
+                      Uploading... {Math.round(uploadProgress)}%
+                    </div>
+                    <div style={{ height: 8, width: '100%', background: '#E5E7EB', borderRadius: 999 }}>
+                      <div
+                        style={{
+                          height: '100%',
+                          width: `${Math.max(0, Math.min(100, uploadProgress))}%`,
+                          background: '#2563EB',
+                          borderRadius: 999,
+                          transition: 'width 150ms ease'
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div
+                style={{
+                  padding: '14px 18px',
+                  borderTop: '1px solid #E5E7EB',
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: '10px'
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={closeUploadModal}
+                  disabled={uploading}
+                  style={{
+                    padding: '9px 14px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    background: '#FFFFFF',
+                    color: '#374151',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: uploading ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploading || !selectedUploadFile}
+                  style={{
+                    padding: '9px 14px',
+                    border: 'none',
+                    borderRadius: '8px',
+                    background: uploading || !selectedUploadFile ? '#9CA3AF' : '#2563EB',
+                    color: '#FFFFFF',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: uploading || !selectedUploadFile ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {uploading ? `Uploading... ${Math.round(uploadProgress)}%` : 'Upload'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

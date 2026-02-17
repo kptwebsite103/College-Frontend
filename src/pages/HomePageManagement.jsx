@@ -8,6 +8,7 @@ import {
 } from '../api/resources.js';
 
 const sectionTypes = [
+  { value: 'hero_text', label: 'Hero Top Text' },
   { value: 'slider', label: 'Hero Carousel (Slides)' },
   { value: 'banner', label: 'Hero Banner' },
   { value: 'block', label: 'Custom HTML (Carousel)' }
@@ -158,6 +159,20 @@ function isImageMedia(item) {
   return /\.(avif|bmp|gif|jpe?g|png|svg|webp)(\?|#|$)/i.test(item.url);
 }
 
+function isVideoMedia(item) {
+  if (!item?.url) return false;
+  if (item.type === 'video') return true;
+  return /\/video\/upload\//i.test(item.url) || /\.(mp4|webm|ogg|mov|m4v|avi|mkv)(\?|#|$)/i.test(item.url);
+}
+
+function isCarouselMedia(item) {
+  return isImageMedia(item) || isVideoMedia(item);
+}
+
+function isVideoUrl(url = '') {
+  return /\/video\/upload\//i.test(url) || /\.(mp4|webm|ogg|mov|m4v|avi|mkv)(\?|#|$)/i.test(url);
+}
+
 export default function HomePageManagement() {
   const [sections, setSections] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -294,6 +309,12 @@ export default function HomePageManagement() {
 
   const getSectionIcon = (type) => {
     switch (type) {
+      case 'hero_text':
+        return (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#7C3AED">
+            <path d="M4 4h16v3h-6v13h-4V7H4V4zm1 17h14v-2H5v2z" />
+          </svg>
+        );
       case 'slider':
         return (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="#3B82F6">
@@ -644,6 +665,12 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
     title_kn: section?.title?.kn || '',
     order: section?.order || 1,
     active: section?.active !== false,
+    heroHeading_en: section?.heroHeading?.en || '',
+    heroHeading_kn: section?.heroHeading?.kn || '',
+    heroDescription_en: section?.heroDescription?.en || '',
+    heroDescription_kn: section?.heroDescription?.kn || '',
+    heroHeadingSize: section?.heroHeadingSize || 42,
+    heroTextAlign: section?.heroTextAlign || 'center',
     bannerImage: section?.bannerImage || '',
     bannerDescription_en: section?.bannerDescription?.en || '',
     bannerDescription_kn: section?.bannerDescription?.kn || '',
@@ -679,13 +706,14 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
   const [mediaError, setMediaError] = useState('');
   const [pickerTarget, setPickerTarget] = useState(null);
 
-  const loadImageMedia = async () => {
+  const loadPickerMedia = async (target = pickerTarget) => {
     setMediaLoading(true);
     setMediaError('');
     try {
       const data = await listMedia();
+      const mediaFilter = target?.kind === 'slide' ? isCarouselMedia : isImageMedia;
       const normalized = Array.isArray(data)
-        ? data.map(normalizeMediaEntry).filter(isImageMedia)
+        ? data.map(normalizeMediaEntry).filter(mediaFilter)
         : [];
       setMediaItems(normalized);
     } catch (error) {
@@ -699,8 +727,8 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
 
   const openMediaPicker = (target) => {
     setPickerTarget(target);
-    if (!mediaLoading && mediaItems.length === 0) {
-      loadImageMedia();
+    if (!mediaLoading) {
+      loadPickerMedia(target);
     }
   };
 
@@ -821,6 +849,19 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
       };
       const bannerLink = cleanString(formData.bannerLink);
       if (bannerLink) payload.bannerLink = bannerLink;
+    }
+
+    if (formData.type === 'hero_text') {
+      payload.heroHeading = {
+        en: formData.heroHeading_en,
+        kn: formData.heroHeading_kn
+      };
+      payload.heroDescription = {
+        en: formData.heroDescription_en,
+        kn: formData.heroDescription_kn
+      };
+      payload.heroHeadingSize = Number(formData.heroHeadingSize) || 42;
+      payload.heroTextAlign = formData.heroTextAlign || 'center';
     }
 
     if (formData.type === 'slider') {
@@ -973,6 +1014,105 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
           />
         </div>
 
+        {formData.type === 'hero_text' ? (
+          <>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
+                Main Heading ({language === 'en' ? 'English' : 'Kannada'})
+              </label>
+              <input
+                type="text"
+                name={language === 'en' ? 'heroHeading_en' : 'heroHeading_kn'}
+                value={language === 'en' ? formData.heroHeading_en : formData.heroHeading_kn}
+                onChange={handleChange}
+                placeholder="Enter big heading text"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '8px',
+                  fontSize: language === 'kn' ? '16px' : '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
+                Description ({language === 'en' ? 'English' : 'Kannada'})
+              </label>
+              <textarea
+                name={language === 'en' ? 'heroDescription_en' : 'heroDescription_kn'}
+                value={language === 'en' ? formData.heroDescription_en : formData.heroDescription_kn}
+                onChange={handleChange}
+                rows={4}
+                placeholder="Enter supporting description text"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '8px',
+                  fontSize: language === 'kn' ? '16px' : '14px',
+                  resize: 'vertical',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '20px',
+                marginBottom: '20px'
+              }}
+            >
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
+                  Heading Size (px)
+                </label>
+                <input
+                  type="number"
+                  name="heroHeadingSize"
+                  value={formData.heroHeadingSize}
+                  onChange={handleChange}
+                  min="18"
+                  max="120"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
+                  Text Position
+                </label>
+                <select
+                  name="heroTextAlign"
+                  value={formData.heroTextAlign}
+                  onChange={handleChange}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box',
+                    background: 'white'
+                  }}
+                >
+                  <option value="left">Left</option>
+                  <option value="center">Middle</option>
+                  <option value="right">Right</option>
+                </select>
+              </div>
+            </div>
+          </>
+        ) : null}
+
         {formData.type === 'banner' ? (
           <>
             <div style={{ marginBottom: '20px' }}>
@@ -1117,13 +1257,13 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                   </button>
                 </div>
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13 }}>Slide Image</label>
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13 }}>Slide Media (Image / Video)</label>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
                       type="url"
                       value={slide.image}
                       onChange={(event) => handleSlideChange(index, 'image', event.target.value)}
-                      placeholder="https://example.com/slide.jpg"
+                      placeholder="https://example.com/slide.jpg or slide.mp4"
                       style={{
                         flex: 1,
                         minWidth: 0,
@@ -1150,18 +1290,36 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                     </button>
                   </div>
                   {slide.image ? (
-                    <img
-                      src={slide.image}
-                      alt={`Slide ${index + 1} preview`}
-                      style={{
-                        marginTop: 8,
-                        width: '100%',
-                        maxHeight: 130,
-                        objectFit: 'cover',
-                        borderRadius: 8,
-                        border: '1px solid #E5E7EB'
-                      }}
-                    />
+                    isVideoUrl(slide.image) ? (
+                      <video
+                        src={slide.image}
+                        muted
+                        controls
+                        preload="metadata"
+                        style={{
+                          marginTop: 8,
+                          width: '100%',
+                          maxHeight: 180,
+                          objectFit: 'contain',
+                          borderRadius: 8,
+                          border: '1px solid #E5E7EB',
+                          background: '#000000'
+                        }}
+                      />
+                    ) : (
+                      <img
+                        src={slide.image}
+                        alt={`Slide ${index + 1} preview`}
+                        style={{
+                          marginTop: 8,
+                          width: '100%',
+                          maxHeight: 130,
+                          objectFit: 'cover',
+                          borderRadius: 8,
+                          border: '1px solid #E5E7EB'
+                        }}
+                      />
+                    )
                   ) : null}
                 </div>
                 <div style={{ marginBottom: 12 }}>
@@ -1412,15 +1570,21 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
               }}
             >
               <div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: '#111827' }}>Select Image From Media Library</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: '#111827' }}>
+                  {pickerTarget?.kind === 'slide'
+                    ? 'Select Image / Video From Media Library'
+                    : 'Select Image From Media Library'}
+                </div>
                 <div style={{ fontSize: 12, color: '#6B7280' }}>
-                  Click an image to use it for {pickerTarget.kind === 'banner' ? 'the banner' : `slide ${pickerTarget.index + 1}`}.
+                  {pickerTarget?.kind === 'slide'
+                    ? `Click a file to use it for slide ${pickerTarget.index + 1}.`
+                    : 'Click an image to use it for the banner.'}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   type="button"
-                  onClick={loadImageMedia}
+                  onClick={() => loadPickerMedia(pickerTarget)}
                   disabled={mediaLoading}
                   style={{
                     border: '1px solid #D1D5DB',
@@ -1456,7 +1620,9 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                 <div style={{ color: '#DC2626', fontSize: 14 }}>{mediaError}</div>
               ) : mediaItems.length === 0 ? (
                 <div style={{ color: '#6B7280', fontSize: 14 }}>
-                  No images found. Upload images in `/admin/media` and retry.
+                  {pickerTarget?.kind === 'slide'
+                    ? 'No media found. Upload image/video in `/admin/media` and retry.'
+                    : 'No images found. Upload images in `/admin/media` and retry.'}
                 </div>
               ) : (
                 <div
@@ -1483,19 +1649,38 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                           textAlign: 'left'
                         }}
                       >
-                        <img
-                          src={item.thumbnail || item.url}
-                          alt={item.title}
-                          style={{
-                            width: '100%',
-                            height: 100,
-                            objectFit: 'cover',
-                            borderRadius: 8,
-                            border: '1px solid #E5E7EB'
-                          }}
-                        />
+                        {isVideoMedia(item) ? (
+                          <video
+                            src={item.url}
+                            muted
+                            preload="metadata"
+                            style={{
+                              width: '100%',
+                              height: 100,
+                              objectFit: 'cover',
+                              borderRadius: 8,
+                              border: '1px solid #E5E7EB',
+                              background: '#000000'
+                            }}
+                          />
+                        ) : (
+                          <img
+                            src={item.thumbnail || item.url}
+                            alt={item.title}
+                            style={{
+                              width: '100%',
+                              height: 100,
+                              objectFit: 'cover',
+                              borderRadius: 8,
+                              border: '1px solid #E5E7EB'
+                            }}
+                          />
+                        )}
                         <div style={{ marginTop: 8, fontSize: 12, color: '#111827', fontWeight: 600 }}>
                           {item.title}
+                        </div>
+                        <div style={{ marginTop: 2, fontSize: 11, color: '#6B7280' }}>
+                          {isVideoMedia(item) ? 'Video' : 'Image'}
                         </div>
                       </button>
                     );

@@ -1006,7 +1006,7 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
     if (!payload.slug) {
       if (showAnnouncementFields) {
         const base = slugifyText(payload.title_en || payload.title_kn || 'announcement');
-        payload.slug = base ? `announcement-${base}` : `announcement-${Date.now()}`;
+        payload.slug = base ? `announcement-${base}-${Date.now()}` : `announcement-${Date.now()}`;
       } else {
         showNotification('error', 'Slug URL is required.');
         return;
@@ -1701,32 +1701,34 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
         {/* Common Fields */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          gridTemplateColumns: showAnnouncementFields ? '1fr' : '1fr 1fr',
           gap: '20px',
           marginBottom: '20px',
           paddingTop: '20px',
           borderTop: '1px solid #E5E7EB'
         }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
-              Slug
-            </label>
-            <input
-              type="text"
-              name="slug"
-              value={formData.slug}
-              onChange={handleChange}
-              placeholder="page-url-slug"
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid #D1D5DB',
-                borderRadius: '8px',
-                fontSize: '14px',
-                boxSizing: 'border-box'
-              }}
-            />
-          </div>
+          {!showAnnouncementFields ? (
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
+                Slug
+              </label>
+              <input
+                type="text"
+                name="slug"
+                value={formData.slug}
+                onChange={handleChange}
+                placeholder="page-url-slug"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+          ) : null}
           <div>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
               Status

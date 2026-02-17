@@ -24,6 +24,11 @@ function formatDateLabel(dateValue) {
   return parsed.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function isVideoUrl(url = '') {
+  if (!url) return false;
+  return /\/video\/upload\//i.test(url) || /\.(mp4|webm|ogg|mov|m4v|avi|mkv)(\?|#|$)/i.test(url);
+}
+
 function getAnnouncementText(page, language) {
   const explicitText = getLocalizedValue(page?.announcement?.text, language);
   if (explicitText) return explicitText;
@@ -46,7 +51,7 @@ const defaultHeroSlides = [
   }
 ];
 
-function HeroCarousel({ slides = [], language = 'en' }) {
+function HeroCarousel({ slides = [], language = 'en', heroText = null }) {
   const safeSlides = Array.isArray(slides)
     ? slides.filter((slide) => {
         if (!slide) return false;
@@ -97,6 +102,11 @@ function HeroCarousel({ slides = [], language = 'en' }) {
 
   const widthPercent = 100 / loopSlides.length;
   const activeDot = safeSlides.length > 0 ? index % safeSlides.length : 0;
+  const heroHeading = getLocalizedValue(heroText?.heroHeading, language) || getLocalizedValue(heroText?.title, language);
+  const heroDescription = getLocalizedValue(heroText?.heroDescription, language);
+  const heroTextAlign = ['left', 'center', 'right'].includes(heroText?.heroTextAlign) ? heroText.heroTextAlign : 'center';
+  const heroHeadingSize = Math.min(130, Math.max(28, Number(heroText?.heroHeadingSize) || 56));
+  const hasHeroOverlay = Boolean(heroHeading || heroDescription);
 
   return (
     <section style={{ marginBottom: 18 }}>
@@ -106,7 +116,7 @@ function HeroCarousel({ slides = [], language = 'en' }) {
           overflow: 'hidden',
           borderRadius: 0,
           width: '100%',
-          aspectRatio: '16 / 9',
+          height: 'clamp(240px, 32vw, 430px)',
           background: '#000000',
           boxShadow: '0 20px 40px rgba(15, 23, 42, 0.25)'
         }}
@@ -123,7 +133,9 @@ function HeroCarousel({ slides = [], language = 'en' }) {
           {loopSlides.map((slide, slideIndex) => {
             const title = getLocalizedValue(slide.title, language);
             const description = getLocalizedValue(slide.description, language);
-            const hasCaption = Boolean(title || description || slide.link);
+            const hasCaption = hasHeroOverlay || Boolean(title || description || slide.link);
+            const mediaUrl = slide.image || '';
+            const videoSlide = isVideoUrl(mediaUrl);
             return (
               <div
                 key={slide._id || slideIndex}
@@ -137,18 +149,38 @@ function HeroCarousel({ slides = [], language = 'en' }) {
                 }}
               >
                 {slide.image ? (
-                  <img
-                    src={slide.image}
-                    alt={title || `Slide ${slideIndex + 1}`}
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain',
-                      objectPosition: 'center center'
-                    }}
-                  />
+                  videoSlide ? (
+                    <video
+                      src={mediaUrl}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        objectPosition: 'center center',
+                        background: '#000000'
+                      }}
+                    />
+                  ) : (
+                    <img
+                      src={slide.image}
+                      alt={title || `Slide ${slideIndex + 1}`}
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        objectPosition: 'center center'
+                      }}
+                    />
+                  )
                 ) : null}
                 <div
                   style={{
@@ -164,31 +196,65 @@ function HeroCarousel({ slides = [], language = 'en' }) {
                     position: 'relative',
                     zIndex: 1,
                     padding: '48px',
-                    maxWidth: 640,
+                    maxWidth: hasHeroOverlay ? 920 : 640,
                     color: 'white'
                   }}
                 >
-                  {title ? <h1 style={{ fontSize: 36, marginBottom: 12 }}>{title}</h1> : null}
-                  {description ? <p style={{ fontSize: 16, lineHeight: 1.6, marginBottom: 24 }}>{description}</p> : null}
-                  {slide.link ? (
-                    <a
-                      href={slide.link}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        padding: '10px 18px',
-                        borderRadius: 999,
-                        background: '#f97316',
-                        color: 'white',
-                        textDecoration: 'none',
-                        fontWeight: 600,
-                        fontSize: 14
-                      }}
-                    >
-                      Learn More
-                    </a>
-                  ) : null}
+                  {hasHeroOverlay ? (
+                    <div style={{ textAlign: heroTextAlign }}>
+                      {heroHeading ? (
+                        <h1
+                          style={{
+                            fontSize: `clamp(34px, 5vw, ${heroHeadingSize}px)`,
+                            margin: 0,
+                            lineHeight: 1.1,
+                            textShadow: '0 4px 18px rgba(0, 0, 0, 0.4)'
+                          }}
+                        >
+                          {heroHeading}
+                        </h1>
+                      ) : null}
+                      {heroDescription ? (
+                        <p
+                          style={{
+                            margin: '14px 0 0',
+                            fontSize: 18,
+                            lineHeight: 1.6,
+                            maxWidth: heroTextAlign === 'center' ? 860 : 620,
+                            marginLeft: heroTextAlign === 'right' || heroTextAlign === 'center' ? 'auto' : 0,
+                            marginRight: heroTextAlign === 'left' || heroTextAlign === 'center' ? 'auto' : 0,
+                            textShadow: '0 2px 8px rgba(0, 0, 0, 0.35)'
+                          }}
+                        >
+                          {heroDescription}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <>
+                      {title ? <h1 style={{ fontSize: 36, marginBottom: 12 }}>{title}</h1> : null}
+                      {description ? <p style={{ fontSize: 16, lineHeight: 1.6, marginBottom: 24 }}>{description}</p> : null}
+                      {slide.link ? (
+                        <a
+                          href={slide.link}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: '10px 18px',
+                            borderRadius: 999,
+                            background: '#f97316',
+                            color: 'white',
+                            textDecoration: 'none',
+                            fontWeight: 600,
+                            fontSize: 14
+                          }}
+                        >
+                          Learn More
+                        </a>
+                      ) : null}
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -246,27 +312,69 @@ function AnnouncementsSection({ announcements = [], language = 'en' }) {
       const dateLabel = toDate ? `${fromDate} to ${toDate}` : fromDate;
       const attachmentUrl = page?.announcement?.attachmentUrl || '';
       const attachmentLabel = page?.announcement?.attachmentLabel || 'Attachment';
+      const startDateRaw = page?.announcement?.startDate || page?.createdAt;
+      const endDateRaw = page?.announcement?.endDate || startDateRaw;
 
       return {
         id: page?._id || page?.slug || text,
         text,
         dateLabel,
         attachmentUrl,
-        attachmentLabel
+        attachmentLabel,
+        startDateRaw,
+        endDateRaw
       };
     })
     .filter(Boolean);
 
   if (announcementItems.length === 0) return null;
 
-  const tickerItems = announcementItems.concat(announcementItems);
+  let displayItems = announcementItems;
+
+  if (announcementItems.length > 1) {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(todayStart);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const countToday = announcementItems.filter((item) => {
+      const startDate = new Date(item.startDateRaw);
+      const endDate = new Date(item.endDateRaw);
+      if (Number.isNaN(startDate.getTime())) return false;
+      if (Number.isNaN(endDate.getTime())) return false;
+      const normalizedStart = new Date(startDate);
+      normalizedStart.setHours(0, 0, 0, 0);
+      const normalizedEnd = new Date(endDate);
+      normalizedEnd.setHours(23, 59, 59, 999);
+      return normalizedStart <= todayEnd && normalizedEnd >= todayStart;
+    }).length;
+
+    const summaryDateLabel = formatDateLabel(todayStart);
+    const summaryCount = countToday > 0 ? countToday : announcementItems.length;
+    const summaryText = countToday > 0
+      ? `${summaryCount} announcement${summaryCount === 1 ? '' : 's'} on ${summaryDateLabel}`
+      : `${summaryCount} announcement${summaryCount === 1 ? '' : 's'} available`;
+
+    displayItems = [
+      {
+        id: 'announcement-summary',
+        text: summaryText,
+        dateLabel: '',
+        attachmentUrl: '',
+        attachmentLabel: ''
+      }
+    ];
+  }
+
+  const shouldLoop = displayItems.length > 1;
+  const tickerItems = shouldLoop ? displayItems.concat(displayItems) : displayItems;
 
   return (
     <section style={{ marginBottom: 20 }}>
       <style>{`
         @keyframes announcementTicker {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
+          from { transform: translateX(100%); }
+          to { transform: translateX(${shouldLoop ? '-50%' : '-100%'}); }
         }
       `}</style>
       <div
@@ -299,7 +407,7 @@ function AnnouncementsSection({ announcements = [], language = 'en' }) {
               display: 'inline-flex',
               alignItems: 'center',
               minWidth: 'max-content',
-              animation: `announcementTicker ${Math.max(24, announcementItems.length * 10)}s linear infinite`
+              animation: `announcementTicker ${Math.max(24, displayItems.length * 10)}s linear infinite`
             }}
           >
             {tickerItems.map((item, index) => (
@@ -309,7 +417,8 @@ function AnnouncementsSection({ announcements = [], language = 'en' }) {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 10,
-                  padding: '0 20px',
+                  padding: 0,
+                  marginRight: 120,
                   fontSize: 14,
                   color: '#1F2937'
                 }}
@@ -328,7 +437,9 @@ function AnnouncementsSection({ announcements = [], language = 'en' }) {
                     {item.attachmentLabel}
                   </a>
                 ) : null}
-                <span style={{ color: '#9CA3AF' }}>|</span>
+                {shouldLoop ? (
+                  <span style={{ color: '#9CA3AF', marginLeft: 24, marginRight: 24 }}>|</span>
+                ) : null}
               </span>
             ))}
           </div>
@@ -452,7 +563,9 @@ const HomePage = () => {
   const heroSlidesFromSections = sliderSections
     .flatMap((section) => (Array.isArray(section.slides) ? section.slides : []))
     .sort((a, b) => (a?.order || 0) - (b?.order || 0));
-  const contentSections = sortedSections.filter((section) => section.type !== 'slider');
+  const heroTextSections = sortedSections.filter((section) => section.type === 'hero_text');
+  const heroTextSection = heroTextSections[0] || null;
+  const contentSections = sortedSections.filter((section) => section.type !== 'slider' && section.type !== 'hero_text');
   const heroSlides = heroSlidesFromSections.length > 0 ? heroSlidesFromSections : defaultHeroSlides;
 
   if (loading && sections.length === 0) {
@@ -465,7 +578,7 @@ const HomePage = () => {
 
   return (
     <div style={fullWidthStyle}>
-      <HeroCarousel slides={heroSlides} language={currentLanguage} />
+      <HeroCarousel slides={heroSlides} language={currentLanguage} heroText={heroTextSection} />
       <AnnouncementsSection announcements={announcements} language={currentLanguage} />
 
       {contentSections.length > 0 ? (
