@@ -1,68 +1,84 @@
-import React from 'react';
-import { listActiveHomeSections, listPublicAnnouncements } from '../api/resources.js';
-import { useLanguage } from '../contexts/LanguageContext.jsx';
+import React from "react";
+import {
+  listActiveHomeSections,
+  listPublicAnnouncements,
+} from "../api/resources.js";
+import { useLanguage } from "../contexts/LanguageContext.jsx";
 
 function getLocalizedValue(value, language) {
-  if (!value) return '';
-  if (typeof value === 'string') return value;
-  return value[language] || value.en || value.kn || '';
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  return value[language] || value.en || value.kn || "";
 }
 
-function stripHtml(html = '') {
-  return String(html || '')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
+function stripHtml(html = "") {
+  return String(html || "")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
 function formatDateLabel(dateValue) {
-  if (!dateValue) return '';
+  if (!dateValue) return "";
   const parsed = new Date(dateValue);
-  if (Number.isNaN(parsed.getTime())) return '';
-  return parsed.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleDateString(undefined, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
-function isVideoUrl(url = '') {
+function isVideoUrl(url = "") {
   if (!url) return false;
-  return /\/video\/upload\//i.test(url) || /\.(mp4|webm|ogg|mov|m4v|avi|mkv)(\?|#|$)/i.test(url);
+  return (
+    /\/video\/upload\//i.test(url) ||
+    /\.(mp4|webm|ogg|mov|m4v|avi|mkv)(\?|#|$)/i.test(url)
+  );
 }
 
 function getAnnouncementText(page, language) {
   const explicitText = getLocalizedValue(page?.announcement?.text, language);
   if (explicitText) return explicitText;
-  const html = getLocalizedValue(page?.content, language)?.html || '';
+  const html = getLocalizedValue(page?.content, language)?.html || "";
   return stripHtml(html);
 }
 
 const defaultHeroSlides = [
   {
-    image: 'https://picsum.photos/1200/500?random=81',
-    title: { en: 'Welcome to Our College', kn: '' },
-    description: { en: 'Excellence in education and innovation.', kn: '' },
-    link: '/home'
+    image: "https://picsum.photos/1200/500?random=81",
+    title: { en: "Welcome to Our College", kn: "" },
+    description: { en: "Excellence in education and innovation.", kn: "" },
+    link: "/home",
   },
   {
-    image: 'https://picsum.photos/1200/500?random=82',
-    title: { en: 'Admissions Open', kn: '' },
-    description: { en: 'Apply now for the upcoming academic year.', kn: '' },
-    link: '/home'
-  }
+    image: "https://picsum.photos/1200/500?random=82",
+    title: { en: "Admissions Open", kn: "" },
+    description: { en: "Apply now for the upcoming academic year.", kn: "" },
+    link: "/home",
+  },
 ];
 
-function HeroCarousel({ slides = [], language = 'en', heroText = null }) {
+const HERO_BANNER_HEIGHT = "clamp(500px, 36vw, 700px)";
+const HERO_MEDIA_FIT_MODE = "cover";
+
+function HeroCarousel({ slides = [], language = "en", heroText = null }) {
   const safeSlides = Array.isArray(slides)
     ? slides.filter((slide) => {
         if (!slide) return false;
         const hasImage = Boolean(slide.image);
         const hasTitle = Boolean(getLocalizedValue(slide.title, language));
-        const hasDescription = Boolean(getLocalizedValue(slide.description, language));
+        const hasDescription = Boolean(
+          getLocalizedValue(slide.description, language),
+        );
         const hasLink = Boolean(slide.link);
         return hasImage || hasTitle || hasDescription || hasLink;
       })
     : [];
-  const loopSlides = safeSlides.length > 1 ? [...safeSlides, safeSlides[0]] : safeSlides;
+  const loopSlides =
+    safeSlides.length > 1 ? [...safeSlides, safeSlides[0]] : safeSlides;
   const [index, setIndex] = React.useState(0);
   const [animate, setAnimate] = React.useState(true);
 
@@ -102,50 +118,65 @@ function HeroCarousel({ slides = [], language = 'en', heroText = null }) {
 
   const widthPercent = 100 / loopSlides.length;
   const activeDot = safeSlides.length > 0 ? index % safeSlides.length : 0;
-  const heroHeading = getLocalizedValue(heroText?.heroHeading, language) || getLocalizedValue(heroText?.title, language);
-  const heroDescription = getLocalizedValue(heroText?.heroDescription, language);
-  const heroTextAlign = ['left', 'center', 'right'].includes(heroText?.heroTextAlign) ? heroText.heroTextAlign : 'center';
-  const heroHeadingSize = Math.min(130, Math.max(28, Number(heroText?.heroHeadingSize) || 56));
+  const heroHeading =
+    getLocalizedValue(heroText?.heroHeading, language) ||
+    getLocalizedValue(heroText?.title, language);
+  const heroDescription = getLocalizedValue(
+    heroText?.heroDescription,
+    language,
+  );
+  const heroTextAlign = ["left", "center", "right"].includes(
+    heroText?.heroTextAlign,
+  )
+    ? heroText.heroTextAlign
+    : "center";
+  const heroHeadingSize = Math.min(
+    130,
+    Math.max(28, Number(heroText?.heroHeadingSize) || 56),
+  );
   const hasHeroOverlay = Boolean(heroHeading || heroDescription);
 
   return (
     <section style={{ marginBottom: 18 }}>
       <div
         style={{
-          position: 'relative',
-          overflow: 'hidden',
+          position: "relative",
+          overflow: "hidden",
           borderRadius: 0,
-          width: '100%',
-          height: 'clamp(240px, 32vw, 430px)',
-          background: '#000000',
-          boxShadow: '0 20px 40px rgba(15, 23, 42, 0.25)'
+          width: "100%",
+          height: HERO_BANNER_HEIGHT,
+          background: "#000000",
+          boxShadow: "0 20px 40px rgba(15, 23, 42, 0.25)",
         }}
       >
         <div
           style={{
-            display: 'flex',
+            display: "flex",
             width: `${loopSlides.length * 100}%`,
-            height: '100%',
+            height: "100%",
             transform: `translateX(-${index * widthPercent}%)`,
-            transition: animate ? 'transform 650ms ease' : 'none'
+            transition: animate ? "transform 650ms ease" : "none",
           }}
         >
           {loopSlides.map((slide, slideIndex) => {
             const title = getLocalizedValue(slide.title, language);
             const description = getLocalizedValue(slide.description, language);
-            const hasCaption = hasHeroOverlay || Boolean(title || description || slide.link);
-            const mediaUrl = slide.image || '';
+            const hasCaption =
+              hasHeroOverlay || Boolean(title || description || slide.link);
+            const mediaUrl = slide.image || "";
             const videoSlide = isVideoUrl(mediaUrl);
             return (
               <div
                 key={slide._id || slideIndex}
                 style={{
                   flex: `0 0 ${widthPercent}%`,
-                  position: 'relative',
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  background: slide.image ? '#0f172a' : 'linear-gradient(120deg, #1d4ed8, #0f172a)'
+                  position: "relative",
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  background: slide.image
+                    ? "#0f172a"
+                    : "linear-gradient(120deg, #1d4ed8, #0f172a)",
                 }}
               >
                 {slide.image ? (
@@ -158,13 +189,13 @@ function HeroCarousel({ slides = [], language = 'en', heroText = null }) {
                       playsInline
                       preload="metadata"
                       style={{
-                        position: 'absolute',
+                        position: "absolute",
                         inset: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'contain',
-                        objectPosition: 'center center',
-                        background: '#000000'
+                        width: "100%",
+                        height: "100%",
+                        objectFit: HERO_MEDIA_FIT_MODE,
+                        objectPosition: "center center",
+                        background: "#000000",
                       }}
                     />
                   ) : (
@@ -172,32 +203,32 @@ function HeroCarousel({ slides = [], language = 'en', heroText = null }) {
                       src={slide.image}
                       alt={title || `Slide ${slideIndex + 1}`}
                       style={{
-                        position: 'absolute',
+                        position: "absolute",
                         inset: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'contain',
-                        objectPosition: 'center center'
+                        width: "100%",
+                        height: "100%",
+                        objectFit: HERO_MEDIA_FIT_MODE,
+                        objectPosition: "center center",
                       }}
                     />
                   )
                 ) : null}
                 <div
                   style={{
-                    position: 'absolute',
+                    position: "absolute",
                     inset: 0,
                     background: hasCaption
-                      ? 'linear-gradient(90deg, rgba(15, 23, 42, 0.62) 0%, rgba(15, 23, 42, 0.12) 60%)'
-                      : 'transparent'
+                      ? "linear-gradient(90deg, rgba(15, 23, 42, 0.62) 0%, rgba(15, 23, 42, 0.12) 60%)"
+                      : "transparent",
                   }}
                 />
                 <div
                   style={{
-                    position: 'relative',
+                    position: "relative",
                     zIndex: 1,
-                    padding: '48px',
+                    padding: "48px",
                     maxWidth: hasHeroOverlay ? 920 : 640,
-                    color: 'white'
+                    color: "white",
                   }}
                 >
                   {hasHeroOverlay ? (
@@ -208,7 +239,7 @@ function HeroCarousel({ slides = [], language = 'en', heroText = null }) {
                             fontSize: `clamp(34px, 5vw, ${heroHeadingSize}px)`,
                             margin: 0,
                             lineHeight: 1.1,
-                            textShadow: '0 4px 18px rgba(0, 0, 0, 0.4)'
+                            textShadow: "0 4px 18px rgba(0, 0, 0, 0.4)",
                           }}
                         >
                           {heroHeading}
@@ -217,13 +248,21 @@ function HeroCarousel({ slides = [], language = 'en', heroText = null }) {
                       {heroDescription ? (
                         <p
                           style={{
-                            margin: '14px 0 0',
+                            margin: "14px 0 0",
                             fontSize: 18,
                             lineHeight: 1.6,
-                            maxWidth: heroTextAlign === 'center' ? 860 : 620,
-                            marginLeft: heroTextAlign === 'right' || heroTextAlign === 'center' ? 'auto' : 0,
-                            marginRight: heroTextAlign === 'left' || heroTextAlign === 'center' ? 'auto' : 0,
-                            textShadow: '0 2px 8px rgba(0, 0, 0, 0.35)'
+                            maxWidth: heroTextAlign === "center" ? 860 : 620,
+                            marginLeft:
+                              heroTextAlign === "right" ||
+                              heroTextAlign === "center"
+                                ? "auto"
+                                : 0,
+                            marginRight:
+                              heroTextAlign === "left" ||
+                              heroTextAlign === "center"
+                                ? "auto"
+                                : 0,
+                            textShadow: "0 2px 8px rgba(0, 0, 0, 0.35)",
                           }}
                         >
                           {heroDescription}
@@ -232,22 +271,36 @@ function HeroCarousel({ slides = [], language = 'en', heroText = null }) {
                     </div>
                   ) : (
                     <>
-                      {title ? <h1 style={{ fontSize: 36, marginBottom: 12 }}>{title}</h1> : null}
-                      {description ? <p style={{ fontSize: 16, lineHeight: 1.6, marginBottom: 24 }}>{description}</p> : null}
+                      {title ? (
+                        <h1 style={{ fontSize: 36, marginBottom: 12 }}>
+                          {title}
+                        </h1>
+                      ) : null}
+                      {description ? (
+                        <p
+                          style={{
+                            fontSize: 16,
+                            lineHeight: 1.6,
+                            marginBottom: 24,
+                          }}
+                        >
+                          {description}
+                        </p>
+                      ) : null}
                       {slide.link ? (
                         <a
                           href={slide.link}
                           style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
+                            display: "inline-flex",
+                            alignItems: "center",
                             gap: 8,
-                            padding: '10px 18px',
+                            padding: "10px 18px",
                             borderRadius: 999,
-                            background: '#f97316',
-                            color: 'white',
-                            textDecoration: 'none',
+                            background: "#f97316",
+                            color: "white",
+                            textDecoration: "none",
                             fontWeight: 600,
-                            fontSize: 14
+                            fontSize: 14,
                           }}
                         >
                           Learn More
@@ -265,12 +318,12 @@ function HeroCarousel({ slides = [], language = 'en', heroText = null }) {
           <>
             <div
               style={{
-                position: 'absolute',
+                position: "absolute",
                 bottom: 16,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                display: 'flex',
-                gap: 8
+                left: "50%",
+                transform: "translateX(-50%)",
+                display: "flex",
+                gap: 8,
               }}
             >
               {safeSlides.map((_, dotIndex) => (
@@ -285,10 +338,13 @@ function HeroCarousel({ slides = [], language = 'en', heroText = null }) {
                   style={{
                     width: 10,
                     height: 10,
-                    borderRadius: '50%',
-                    border: 'none',
-                    background: dotIndex === activeDot ? '#f97316' : 'rgba(255,255,255,0.4)',
-                    cursor: 'pointer'
+                    borderRadius: "50%",
+                    border: "none",
+                    background:
+                      dotIndex === activeDot
+                        ? "#f97316"
+                        : "rgba(255,255,255,0.4)",
+                    cursor: "pointer",
                   }}
                 />
               ))}
@@ -300,18 +356,21 @@ function HeroCarousel({ slides = [], language = 'en', heroText = null }) {
   );
 }
 
-function AnnouncementsSection({ announcements = [], language = 'en' }) {
+function AnnouncementsSection({ announcements = [], language = "en" }) {
   if (!Array.isArray(announcements) || announcements.length === 0) return null;
 
   const announcementItems = announcements
     .map((page) => {
       const text = getAnnouncementText(page, language);
       if (!text) return null;
-      const fromDate = formatDateLabel(page?.announcement?.startDate || page?.createdAt);
+      const fromDate = formatDateLabel(
+        page?.announcement?.startDate || page?.createdAt,
+      );
       const toDate = formatDateLabel(page?.announcement?.endDate);
       const dateLabel = toDate ? `${fromDate} to ${toDate}` : fromDate;
-      const attachmentUrl = page?.announcement?.attachmentUrl || '';
-      const attachmentLabel = page?.announcement?.attachmentLabel || 'Attachment';
+      const attachmentUrl = page?.announcement?.attachmentUrl || "";
+      const attachmentLabel =
+        page?.announcement?.attachmentLabel || "Attachment";
       const startDateRaw = page?.announcement?.startDate || page?.createdAt;
       const endDateRaw = page?.announcement?.endDate || startDateRaw;
 
@@ -322,7 +381,7 @@ function AnnouncementsSection({ announcements = [], language = 'en' }) {
         attachmentUrl,
         attachmentLabel,
         startDateRaw,
-        endDateRaw
+        endDateRaw,
       };
     })
     .filter(Boolean);
@@ -351,94 +410,110 @@ function AnnouncementsSection({ announcements = [], language = 'en' }) {
 
     const summaryDateLabel = formatDateLabel(todayStart);
     const summaryCount = countToday > 0 ? countToday : announcementItems.length;
-    const summaryText = countToday > 0
-      ? `${summaryCount} announcement${summaryCount === 1 ? '' : 's'} on ${summaryDateLabel}`
-      : `${summaryCount} announcement${summaryCount === 1 ? '' : 's'} available`;
+    const summaryText =
+      countToday > 0
+        ? `${summaryCount} announcement${summaryCount === 1 ? "" : "s"} on ${summaryDateLabel}`
+        : `${summaryCount} announcement${summaryCount === 1 ? "" : "s"} available`;
 
     displayItems = [
       {
-        id: 'announcement-summary',
+        id: "announcement-summary",
         text: summaryText,
-        dateLabel: '',
-        attachmentUrl: '',
-        attachmentLabel: ''
-      }
+        dateLabel: "",
+        attachmentUrl: "",
+        attachmentLabel: "",
+      },
     ];
   }
 
-  const shouldLoop = displayItems.length > 1;
-  const tickerItems = shouldLoop ? displayItems.concat(displayItems) : displayItems;
+  const tickerItems = displayItems;
 
   return (
     <section style={{ marginBottom: 20 }}>
       <style>{`
         @keyframes announcementTicker {
-          from { transform: translateX(100%); }
-          to { transform: translateX(${shouldLoop ? '-50%' : '-100%'}); }
+          from { transform: translateX(0); }
+          to { transform: translateX(-100%); }
         }
       `}</style>
       <div
         style={{
-          display: 'flex',
-          alignItems: 'center',
+          display: "flex",
+          alignItems: "center",
           minHeight: 44,
-          borderTop: '1px solid #E5E7EB',
-          borderBottom: '1px solid #E5E7EB',
-          background: '#FFFFFF'
+          borderTop: "1px solid #E5E7EB",
+          borderBottom: "1px solid #E5E7EB",
+          background: "#FFFFFF",
         }}
       >
         <div
           style={{
             minWidth: 142,
-            padding: '10px 12px',
+            padding: "10px 12px",
             fontSize: 13,
             fontWeight: 700,
-            color: '#FFFFFF',
-            background: '#111827',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em'
+            color: "#FFFFFF",
+            background: "#111827",
+            textTransform: "uppercase",
+            letterSpacing: "0.04em",
           }}
         >
           Announcements
         </div>
-        <div style={{ flex: 1, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+        <div style={{ flex: 1, overflow: "hidden", whiteSpace: "nowrap" }}>
           <div
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              minWidth: 'max-content',
-              animation: `announcementTicker ${Math.max(24, displayItems.length * 10)}s linear infinite`
+              display: "inline-flex",
+              alignItems: "center",
+              minWidth: "max-content",
+              paddingLeft: "100%",
+              willChange: "transform",
+              animation: `announcementTicker ${Math.max(20, tickerItems.length * 10)}s linear infinite`,
             }}
           >
             {tickerItems.map((item, index) => (
               <span
                 key={`${item.id}-${index}`}
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
+                  display: "inline-flex",
+                  alignItems: "center",
                   gap: 10,
                   padding: 0,
                   marginRight: 120,
                   fontSize: 14,
-                  color: '#1F2937'
+                  color: "#1F2937",
                 }}
               >
                 <span>{item.text}</span>
                 {item.dateLabel ? (
-                  <span style={{ color: '#6B7280', fontSize: 12 }}>({item.dateLabel})</span>
+                  <span style={{ color: "#6B7280", fontSize: 12 }}>
+                    ({item.dateLabel})
+                  </span>
                 ) : null}
                 {item.attachmentUrl ? (
                   <a
                     href={item.attachmentUrl}
                     target="_blank"
                     rel="noreferrer"
-                    style={{ color: '#2563EB', fontWeight: 600, textDecoration: 'none' }}
+                    style={{
+                      color: "#2563EB",
+                      fontWeight: 600,
+                      textDecoration: "none",
+                    }}
                   >
                     {item.attachmentLabel}
                   </a>
                 ) : null}
-                {shouldLoop ? (
-                  <span style={{ color: '#9CA3AF', marginLeft: 24, marginRight: 24 }}>|</span>
+                {tickerItems.length > 1 && index < tickerItems.length - 1 ? (
+                  <span
+                    style={{
+                      color: "#9CA3AF",
+                      marginLeft: 24,
+                      marginRight: 24,
+                    }}
+                  >
+                    |
+                  </span>
                 ) : null}
               </span>
             ))}
@@ -455,31 +530,46 @@ const HomePage = () => {
   const [announcements, setAnnouncements] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const fullWidthStyle = {
-    width: 'calc(100% + 32px)',
-    marginLeft: '-16px',
-    marginRight: '-16px',
+    width: "calc(100% + 32px)",
+    marginLeft: "-16px",
+    marginRight: "-16px",
     marginTop: 8,
-    padding: 0
+    padding: 0,
   };
 
   React.useEffect(() => {
     let alive = true;
     setLoading(true);
-    Promise.allSettled([listActiveHomeSections(), listPublicAnnouncements({ limit: 6 })])
+    Promise.allSettled([
+      listActiveHomeSections(),
+      listPublicAnnouncements({ limit: 6 }),
+    ])
       .then(([sectionsResult, announcementsResult]) => {
         if (!alive) return;
 
-        if (sectionsResult.status === 'fulfilled') {
-          setSections(Array.isArray(sectionsResult.value) ? sectionsResult.value : []);
+        if (sectionsResult.status === "fulfilled") {
+          setSections(
+            Array.isArray(sectionsResult.value) ? sectionsResult.value : [],
+          );
         } else {
-          console.error('Failed to load homepage sections:', sectionsResult.reason);
+          console.error(
+            "Failed to load homepage sections:",
+            sectionsResult.reason,
+          );
           setSections([]);
         }
 
-        if (announcementsResult.status === 'fulfilled') {
-          setAnnouncements(Array.isArray(announcementsResult.value) ? announcementsResult.value : []);
+        if (announcementsResult.status === "fulfilled") {
+          setAnnouncements(
+            Array.isArray(announcementsResult.value)
+              ? announcementsResult.value
+              : [],
+          );
         } else {
-          console.error('Failed to load announcements:', announcementsResult.reason);
+          console.error(
+            "Failed to load announcements:",
+            announcementsResult.reason,
+          );
           setAnnouncements([]);
         }
       })
@@ -494,35 +584,44 @@ const HomePage = () => {
   const renderSection = (section) => {
     if (!section) return null;
 
-    if (section.type === 'banner') {
+    if (section.type === "banner") {
       const title = getLocalizedValue(section.title, currentLanguage);
-      const description = getLocalizedValue(section.bannerDescription, currentLanguage);
+      const description = getLocalizedValue(
+        section.bannerDescription,
+        currentLanguage,
+      );
       return (
         <section key={section._id} style={{ marginBottom: 32 }}>
           <div
             style={{
-              display: 'grid',
-              gridTemplateColumns: section.bannerImage ? 'minmax(0, 1fr) minmax(0, 1fr)' : '1fr',
+              display: "grid",
+              gridTemplateColumns: section.bannerImage
+                ? "minmax(0, 1fr) minmax(0, 1fr)"
+                : "1fr",
               gap: 24,
-              alignItems: 'center'
+              alignItems: "center",
             }}
           >
             <div>
-              {title ? <h1 style={{ fontSize: 34, marginBottom: 12 }}>{title}</h1> : null}
-              {description ? <p style={{ fontSize: 16, lineHeight: 1.6 }}>{description}</p> : null}
+              {title ? (
+                <h1 style={{ fontSize: 34, marginBottom: 12 }}>{title}</h1>
+              ) : null}
+              {description ? (
+                <p style={{ fontSize: 16, lineHeight: 1.6 }}>{description}</p>
+              ) : null}
               {section.bannerLink ? (
                 <a
                   href={section.bannerLink}
                   style={{
-                    display: 'inline-flex',
+                    display: "inline-flex",
                     marginTop: 16,
-                    padding: '10px 18px',
+                    padding: "10px 18px",
                     borderRadius: 999,
-                    background: '#2563eb',
-                    color: 'white',
-                    textDecoration: 'none',
+                    background: "#2563eb",
+                    color: "white",
+                    textDecoration: "none",
                     fontWeight: 600,
-                    fontSize: 14
+                    fontSize: 14,
                   }}
                 >
                   Learn More
@@ -532,8 +631,13 @@ const HomePage = () => {
             {section.bannerImage ? (
               <img
                 src={section.bannerImage}
-                alt={title || 'Hero banner'}
-                style={{ width: '100%', height: 'auto', borderRadius: 16, objectFit: 'cover' }}
+                alt={title || "Hero banner"}
+                style={{
+                  width: "100%",
+                  height: "auto",
+                  borderRadius: 16,
+                  objectFit: "cover",
+                }}
               />
             ) : null}
           </div>
@@ -541,8 +645,11 @@ const HomePage = () => {
       );
     }
 
-    if (section.type === 'block') {
-      const htmlContent = getLocalizedValue(section.blockContent, currentLanguage);
+    if (section.type === "block") {
+      const htmlContent = getLocalizedValue(
+        section.blockContent,
+        currentLanguage,
+      );
       if (!htmlContent) return null;
       return (
         <section
@@ -559,18 +666,27 @@ const HomePage = () => {
   const sortedSections = Array.isArray(sections)
     ? sections.slice().sort((a, b) => (a.order || 0) - (b.order || 0))
     : [];
-  const sliderSections = sortedSections.filter((section) => section.type === 'slider');
+  const sliderSections = sortedSections.filter(
+    (section) => section.type === "slider",
+  );
   const heroSlidesFromSections = sliderSections
     .flatMap((section) => (Array.isArray(section.slides) ? section.slides : []))
     .sort((a, b) => (a?.order || 0) - (b?.order || 0));
-  const heroTextSections = sortedSections.filter((section) => section.type === 'hero_text');
+  const heroTextSections = sortedSections.filter(
+    (section) => section.type === "hero_text",
+  );
   const heroTextSection = heroTextSections[0] || null;
-  const contentSections = sortedSections.filter((section) => section.type !== 'slider' && section.type !== 'hero_text');
-  const heroSlides = heroSlidesFromSections.length > 0 ? heroSlidesFromSections : defaultHeroSlides;
+  const contentSections = sortedSections.filter(
+    (section) => section.type !== "slider" && section.type !== "hero_text",
+  );
+  const heroSlides =
+    heroSlidesFromSections.length > 0
+      ? heroSlidesFromSections
+      : defaultHeroSlides;
 
   if (loading && sections.length === 0) {
     return (
-      <div style={{ ...fullWidthStyle, padding: '24px 16px' }}>
+      <div style={{ ...fullWidthStyle, padding: "24px 16px" }}>
         <p>Loading homepage...</p>
       </div>
     );
@@ -578,26 +694,38 @@ const HomePage = () => {
 
   return (
     <div style={fullWidthStyle}>
-      <HeroCarousel slides={heroSlides} language={currentLanguage} heroText={heroTextSection} />
-      <AnnouncementsSection announcements={announcements} language={currentLanguage} />
+      <HeroCarousel
+        slides={heroSlides}
+        language={currentLanguage}
+        heroText={heroTextSection}
+      />
+      <AnnouncementsSection
+        announcements={announcements}
+        language={currentLanguage}
+      />
 
       {contentSections.length > 0 ? (
         contentSections.map((section) => (
-          <React.Fragment key={section._id || section.id}>{renderSection(section)}</React.Fragment>
+          <React.Fragment key={section._id || section.id}>
+            {renderSection(section)}
+          </React.Fragment>
         ))
       ) : (
         <section
           style={{
             marginBottom: 32,
-            border: '1px dashed #D1D5DB',
+            border: "1px dashed #D1D5DB",
             borderRadius: 12,
             padding: 16,
-            background: '#F9FAFB'
+            background: "#F9FAFB",
           }}
         >
-          <h3 style={{ margin: '0 0 8px', fontSize: 18, color: '#111827' }}>Home Content Is Empty</h3>
-          <p style={{ margin: 0, color: '#6B7280', fontSize: 14 }}>
-            Add banner/block sections in Homepage Management to show content below announcements.
+          <h3 style={{ margin: "0 0 8px", fontSize: 18, color: "#111827" }}>
+            Home Content Is Empty
+          </h3>
+          <p style={{ margin: 0, color: "#6B7280", fontSize: 14 }}>
+            Add banner/block sections in Homepage Management to show content
+            below announcements.
           </p>
         </section>
       )}
