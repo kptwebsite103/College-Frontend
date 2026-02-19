@@ -492,6 +492,171 @@ export default function MenusPage() {
         setEditingMenu(null);
         setLoading(false);
         return;
+      } else if (!editingMenu && String(menuData?.parent_id || '0') !== '0') {
+        // Create as first-level sub-item under the selected parent menu
+        const selectedParentId = String(menuData.parent_id);
+        const selectedParentMenu = menus.find(
+          (menu) => String(menu._id || menu.id) === selectedParentId
+        );
+
+        if (!selectedParentMenu) {
+          showNotification('error', 'Selected parent menu not found. Please refresh and try again.');
+          setLoading(false);
+          return;
+        }
+
+        const childItem = {
+          title: {
+            en: menuData?.menu_name_en || '',
+            kn: menuData?.menu_name_kn || ''
+          },
+          url: menuData?.url_en || '',
+          redirect_url: menuData?.redirect_url || '',
+          order: menuData?.order_no || 0,
+          target: '_self',
+          status: statusForSave,
+          items: []
+        };
+
+        const updatedParentPayload = {
+          ...selectedParentMenu,
+          items: [...(selectedParentMenu.items || []), childItem]
+        };
+
+        const response = await updateMenu(selectedParentMenu._id || selectedParentMenu.id, updatedParentPayload);
+
+        const addTempIds = (items, path = '') => {
+          return items.map((item, index) => {
+            const contentHash = `${item.title?.en || ''}-${item.url || ''}-${item.order || 0}`;
+            const stableId = item._id || `temp-${path}-${index}-${contentHash}`;
+            return {
+              ...item,
+              _id: stableId,
+              items: item.items ? addTempIds(item.items, `${path}-${index}`) : []
+            };
+          });
+        };
+
+        const processedResponse = {
+          ...response,
+          items: response.items ? addTempIds(response.items) : []
+        };
+
+        const updatedMenus = menus.map((menu) =>
+          (menu._id || menu.id) === (processedResponse._id || processedResponse.id)
+            ? processedResponse
+            : menu
+        );
+        setMenus(updatedMenus);
+        window.dispatchEvent(new CustomEvent('menusUpdated', { detail: updatedMenus }));
+
+        // Auto-create page if child menu has an internal URL
+        const childUrl = childItem.url;
+        if (childUrl && childUrl !== '#') {
+          try {
+            const slug = childUrl.startsWith('/') ? childUrl.slice(1) : childUrl;
+            try {
+              await getPageBySlug(slug);
+            } catch (pageNotFound) {
+              await createPage({
+                title: {
+                  en: childItem.title?.en || menuData.menu_name_en || 'New Page',
+                  kn: childItem.title?.kn || menuData.menu_name_kn || ''
+                },
+                slug,
+                content: {
+                  en: `<h1>${childItem.title?.en || menuData.menu_name_en || 'New Page'}</h1><p>Welcome to the ${childItem.title?.en || menuData.menu_name_en || 'new page'}.</p>`,
+                  kn: childItem.title?.kn ? `<h1>${childItem.title?.kn}</h1><p>à²¸à³à²µà²¾à²—à²¤</p>` : ''
+                },
+                status: canReview ? 'approved' : 'pending'
+              });
+            }
+          } catch (pageError) {
+            console.error('Failed to auto-create page for child menu:', pageError);
+          }
+        }
+
+        showNotification('success', `Menu item created under "${selectedParentMenu.name?.en || selectedParentMenu.menu_name_en || 'selected parent'}".`);
+        setShowAddForm(false);
+        setEditingMenu(null);
+        setLoading(false);
+        return;
+      } else if (
+        editingMenu &&
+        !editingMenu.title &&
+        String(menuData?.parent_id || '0') !== '0' &&
+        String(menuData.parent_id) !== String(editingMenu._id || editingMenu.id)
+      ) {
+        // Move existing top-level menu under selected parent as a sub-menu item
+        const selectedParentId = String(menuData.parent_id);
+        const selectedParentMenu = menus.find(
+          (menu) => String(menu._id || menu.id) === selectedParentId
+        );
+
+        if (!selectedParentMenu) {
+          showNotification('error', 'Selected parent menu not found. Please refresh and try again.');
+          setLoading(false);
+          return;
+        }
+
+        const movedChildItem = {
+          _id: editingMenu._id || editingMenu.id,
+          title: {
+            en: menuData?.menu_name_en || editingMenu?.name?.en || '',
+            kn: menuData?.menu_name_kn || editingMenu?.name?.kn || ''
+          },
+          url: menuData?.url_en || '',
+          redirect_url: menuData?.redirect_url || '',
+          order: menuData?.order_no || 0,
+          target: '_self',
+          status: statusForEdit,
+          items: Array.isArray(editingMenu.items) ? editingMenu.items : []
+        };
+
+        const updatedParentPayload = {
+          ...selectedParentMenu,
+          items: [...(selectedParentMenu.items || []), movedChildItem]
+        };
+
+        const parentResponse = await updateMenu(selectedParentMenu._id || selectedParentMenu.id, updatedParentPayload);
+
+        // Remove old top-level menu record after moving it into parent items
+        await deleteMenu(editingMenu._id || editingMenu.id);
+
+        const addTempIds = (items, path = '') => {
+          return items.map((item, index) => {
+            const contentHash = `${item.title?.en || ''}-${item.url || ''}-${item.order || 0}`;
+            const stableId = item._id || `temp-${path}-${index}-${contentHash}`;
+            return {
+              ...item,
+              _id: stableId,
+              items: item.items ? addTempIds(item.items, `${path}-${index}`) : []
+            };
+          });
+        };
+
+        const processedParent = {
+          ...parentResponse,
+          items: parentResponse.items ? addTempIds(parentResponse.items) : []
+        };
+
+        const movedMenuId = String(editingMenu._id || editingMenu.id);
+        const updatedMenus = menus
+          .filter((menu) => String(menu._id || menu.id) !== movedMenuId)
+          .map((menu) =>
+            (menu._id || menu.id) === (processedParent._id || processedParent.id)
+              ? processedParent
+              : menu
+          );
+
+        setMenus(updatedMenus);
+        window.dispatchEvent(new CustomEvent('menusUpdated', { detail: updatedMenus }));
+
+        showNotification('success', `Menu moved under "${selectedParentMenu.name?.en || selectedParentMenu.menu_name_en || 'selected parent'}" as a sub-menu.`);
+        setShowAddForm(false);
+        setEditingMenu(null);
+        setLoading(false);
+        return;
       } else if (editingMenu && !editingMenu.title) {
         // Update existing menu via API
         const menuId = editingMenu._id || editingMenu.id;
@@ -544,9 +709,9 @@ export default function MenusPage() {
           setLoading(false);
           return;
         }
-
-        // Dispatch event to notify navbar of menu changes
-        window.dispatchEvent(new CustomEvent('menusUpdated', { detail: updated }));
+        showNotification('error', 'Could not locate the parent menu for this item. Please refresh and try again.');
+        setLoading(false);
+        return;
       } else {
         // Add new menu via API
         try {

@@ -658,6 +658,7 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
   const [mediaLoading, setMediaLoading] = useState(false);
   const [mediaError, setMediaError] = useState('');
   const [showAttachmentPicker, setShowAttachmentPicker] = useState(false);
+  const [previewImageTarget, setPreviewImageTarget] = useState(null);
 
   // Populate form when editingPage changes and form is opening
   useEffect(() => {
@@ -697,6 +698,8 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
       
       setEnSingleFileContent(enSingleContent);
       setKnSingleFileContent(knSingleContent);
+      setEnPreviewDoc('');
+      setKnPreviewDoc('');
       
       setFormOpen(true);
     } else if (!editingPage) {
@@ -727,6 +730,8 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
       // Reset single file content
       setEnSingleFileContent('');
       setKnSingleFileContent('');
+      setEnPreviewDoc('');
+      setKnPreviewDoc('');
       
       setFormOpen(false);
     }
@@ -737,11 +742,15 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
   const [enContentMode, setEnContentMode] = useState('code');
   const [enCodeTab, setEnCodeTab] = useState('single');
   const [enSingleFileContent, setEnSingleFileContent] = useState('');
+  const [enPreviewDoc, setEnPreviewDoc] = useState('');
+  const enPreviewIframeRef = useRef(null);
   
   // Separate state for Kannada editor
   const [knContentMode, setKnContentMode] = useState('code');
   const [knCodeTab, setKnCodeTab] = useState('single');
   const [knSingleFileContent, setKnSingleFileContent] = useState('');
+  const [knPreviewDoc, setKnPreviewDoc] = useState('');
+  const knPreviewIframeRef = useRef(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -802,6 +811,20 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
     }
   };
 
+  const closeMediaPicker = () => {
+    setShowAttachmentPicker(false);
+    setPreviewImageTarget(null);
+  };
+
+  const openPreviewImagePicker = ({ locale, imageIndex, currentSrc = '' }) => {
+    if (!Number.isInteger(imageIndex) || imageIndex < 0) return;
+    setPreviewImageTarget({ locale, imageIndex, currentSrc });
+    setShowAttachmentPicker(false);
+    if (mediaItems.length === 0 && !mediaLoading) {
+      loadMediaLibrary();
+    }
+  };
+
   const selectAttachment = (item) => {
     if (!item?.url) return;
     setFormData((prev) => ({
@@ -810,7 +833,48 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
       announcement_attachment_label:
         prev.announcement_attachment_label || item.title || 'Attachment'
     }));
-    setShowAttachmentPicker(false);
+    closeMediaPicker();
+  };
+
+  const applySelectedPreviewImage = (item) => {
+    if (!item?.url || !previewImageTarget) return;
+    const { locale, imageIndex } = previewImageTarget;
+
+    setFormData((prev) => {
+      const key = locale === 'kn' ? 'content_kn' : 'content_en';
+      const currentContent = prev[key] || { html: '', javascript: '' };
+      const html = currentContent.html || '';
+      const container = document.createElement('div');
+      container.innerHTML = html;
+      const images = container.querySelectorAll('img');
+
+      if (!images[imageIndex]) {
+        return prev;
+      }
+
+      images[imageIndex].setAttribute('src', item.url);
+      const updatedHtml = container.innerHTML;
+      const updatedContent = { ...currentContent, html: updatedHtml };
+
+      if (locale === 'kn') {
+        if (knCodeTab === 'single') {
+          setKnSingleFileContent(buildSingleFileContent(updatedHtml, updatedContent.javascript || '', prev.css || ''));
+        }
+        setKnPreviewDoc(buildEditablePreviewHTML('kn', updatedHtml, updatedContent.javascript || ''));
+      } else {
+        if (enCodeTab === 'single') {
+          setEnSingleFileContent(buildSingleFileContent(updatedHtml, updatedContent.javascript || '', prev.css || ''));
+        }
+        setEnPreviewDoc(buildEditablePreviewHTML('en', updatedHtml, updatedContent.javascript || ''));
+      }
+
+      return {
+        ...prev,
+        [key]: updatedContent
+      };
+    });
+
+    closeMediaPicker();
   };
 
   // Parse single file content into HTML and JS (CSS extracted separately)
@@ -837,16 +901,161 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
   };
 
   // Build single file content from HTML, CSS, and JS
-  const buildSingleFileContent = (html, js) => {
+  const buildSingleFileContent = (html, js, cssValue = formData.css) => {
     let result = html;
-    if (formData.css) {
-      result = `<style>${formData.css}</style>\n${result}`;
+    if (cssValue) {
+      result = `<style>${cssValue}</style>\n${result}`;
     }
     if (js) {
       result = `${result}\n<script>${js}</script>`;
     }
     return result;
   };
+
+  // Build editable preview HTML that allows editing text directly and image URL via click.
+  const buildEditablePreviewHTML = (locale, htmlContent, javascriptContent) => {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          ${formData.css}
+          body {
+            font-family: 'Noto Sans', 'Noto Sans Kannada', sans-serif !important;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+            background: #ffffff;
+          }
+          * {
+            font-family: inherit;
+          }
+          #cms-preview-root {
+            min-height: calc(100vh - 40px);
+            outline: 2px dashed transparent;
+            outline-offset: 6px;
+          }
+          #cms-preview-root:focus {
+            outline-color: rgba(37, 99, 235, 0.4);
+          }
+          #cms-preview-root img {
+            cursor: pointer;
+          }
+          #cms-preview-root img:hover {
+            outline: 2px solid rgba(37, 99, 235, 0.45);
+            outline-offset: 2px;
+          }
+        </style>
+      </head>
+      <body>
+        <div id="cms-preview-root" contenteditable="true">${htmlContent || ''}</div>
+        <script>
+          (function () {
+            const root = document.getElementById('cms-preview-root');
+            if (!root) return;
+
+            const sendUpdate = () => {
+              window.parent.postMessage({
+                type: 'cms-preview-update',
+                locale: '${locale}',
+                html: root.innerHTML
+              }, '*');
+            };
+
+            root.addEventListener('input', sendUpdate);
+            root.addEventListener('blur', sendUpdate, true);
+            root.addEventListener('paste', function () {
+              setTimeout(sendUpdate, 0);
+            });
+
+            root.addEventListener('click', function (event) {
+              const target = event.target;
+              if (!target || target.tagName !== 'IMG') return;
+              event.preventDefault();
+              const images = Array.from(root.querySelectorAll('img'));
+              const imageIndex = images.indexOf(target);
+              if (imageIndex < 0) return;
+              window.parent.postMessage({
+                type: 'cms-preview-image-select',
+                locale: '${locale}',
+                imageIndex,
+                currentSrc: target.getAttribute('src') || ''
+              }, '*');
+            });
+
+            sendUpdate();
+          })();
+        </script>
+        <script>${javascriptContent || ''}</script>
+      </body>
+      </html>
+    `;
+  };
+
+  const openEnglishPreview = () => {
+    setEnPreviewDoc(buildEditablePreviewHTML('en', formData.content_en.html, formData.content_en.javascript));
+    setEnContentMode('preview');
+  };
+
+  const openKannadaPreview = () => {
+    setKnPreviewDoc(buildEditablePreviewHTML('kn', formData.content_kn.html, formData.content_kn.javascript));
+    setKnContentMode('preview');
+  };
+
+  useEffect(() => {
+    const handlePreviewMessage = (event) => {
+      const payload = event?.data;
+      if (!payload || !payload.type) return;
+
+      if (payload.type === 'cms-preview-image-select') {
+        const sourceMatchesEn = enPreviewIframeRef.current && event.source === enPreviewIframeRef.current.contentWindow;
+        const sourceMatchesKn = knPreviewIframeRef.current && event.source === knPreviewIframeRef.current.contentWindow;
+        if (!sourceMatchesEn && !sourceMatchesKn) return;
+        openPreviewImagePicker({
+          locale: payload.locale === 'kn' ? 'kn' : 'en',
+          imageIndex: Number(payload.imageIndex),
+          currentSrc: payload.currentSrc || ''
+        });
+        return;
+      }
+
+      if (payload.type !== 'cms-preview-update') return;
+      const nextHtml = String(payload.html || '');
+
+      if (
+        payload.locale === 'en'
+        && enPreviewIframeRef.current
+        && event.source === enPreviewIframeRef.current.contentWindow
+      ) {
+        setFormData((prev) => {
+          if ((prev.content_en?.html || '') === nextHtml) return prev;
+          const nextContent = { ...(prev.content_en || {}), html: nextHtml };
+          if (enCodeTab === 'single') {
+            setEnSingleFileContent(buildSingleFileContent(nextHtml, nextContent.javascript || '', prev.css || ''));
+          }
+          return { ...prev, content_en: nextContent };
+        });
+      }
+
+      if (
+        payload.locale === 'kn'
+        && knPreviewIframeRef.current
+        && event.source === knPreviewIframeRef.current.contentWindow
+      ) {
+        setFormData((prev) => {
+          if ((prev.content_kn?.html || '') === nextHtml) return prev;
+          const nextContent = { ...(prev.content_kn || {}), html: nextHtml };
+          if (knCodeTab === 'single') {
+            setKnSingleFileContent(buildSingleFileContent(nextHtml, nextContent.javascript || '', prev.css || ''));
+          }
+          return { ...prev, content_kn: nextContent };
+        });
+      }
+    };
+
+    window.addEventListener('message', handlePreviewMessage);
+    return () => window.removeEventListener('message', handlePreviewMessage);
+  }, [enCodeTab, knCodeTab]);
 
   const handleEnCodeChange = (value) => {
     if (enCodeTab === 'single') {
@@ -1059,34 +1268,6 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
       }
     };
     
-    // Build preview HTML with embedded CSS and JS
-    const buildPreviewHTML = () => {
-      return `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            ${formData.css}
-            /* Default font styling to match website */
-            body {
-              font-family: 'Noto Sans', 'Noto Sans Kannada', sans-serif !important;
-              margin: 0;
-              padding: 20px;
-              line-height: 1.6;
-            }
-            * {
-              font-family: inherit;
-            }
-          </style>
-        </head>
-        <body>
-          ${formData.content_en.html}
-          <script>${formData.content_en.javascript}</script>
-        </body>
-        </html>
-      `;
-    };
-    
     return (
       <div style={{
         border: '1px solid #D1D5DB',
@@ -1130,7 +1311,7 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
             </button>
             <button
               type="button"
-              onClick={() => setEnContentMode('preview')}
+              onClick={openEnglishPreview}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -1231,7 +1412,8 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
         {/* Content Area */}
         {enContentMode === 'preview' ? (
           <iframe
-            srcDoc={buildPreviewHTML()}
+            ref={enPreviewIframeRef}
+            srcDoc={enPreviewDoc || buildEditablePreviewHTML('en', formData.content_en.html, formData.content_en.javascript)}
             style={{
               width: '100%',
               height: '400px',
@@ -1294,34 +1476,6 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
       }
     };
     
-    // Build preview HTML with embedded CSS and JS
-    const buildPreviewHTML = () => {
-      return `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            ${formData.css}
-            /* Default font styling to match website */
-            body {
-              font-family: 'Noto Sans', 'Noto Sans Kannada', sans-serif !important;
-              margin: 0;
-              padding: 20px;
-              line-height: 1.6;
-            }
-            * {
-              font-family: inherit;
-            }
-          </style>
-        </head>
-        <body>
-          ${formData.content_kn.html}
-          <script>${formData.content_kn.javascript}</script>
-        </body>
-        </html>
-      `;
-    };
-    
     return (
       <div style={{
         border: '1px solid #D1D5DB',
@@ -1365,7 +1519,7 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
             </button>
             <button
               type="button"
-              onClick={() => setKnContentMode('preview')}
+              onClick={openKannadaPreview}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -1466,7 +1620,8 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
         {/* Content Area */}
         {knContentMode === 'preview' ? (
           <iframe
-            srcDoc={buildPreviewHTML()}
+            ref={knPreviewIframeRef}
+            srcDoc={knPreviewDoc || buildEditablePreviewHTML('kn', formData.content_kn.html, formData.content_kn.javascript)}
             style={{
               width: '100%',
               height: '400px',
@@ -1516,6 +1671,16 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
       </div>
     );
   };
+
+  const isImageMediaItem = (item) => {
+    const type = String(item?.type || '').toLowerCase();
+    if (type === 'image') return true;
+    const url = String(item?.url || '');
+    return /\.(avif|bmp|gif|jpe?g|png|svg|webp)(\?|#|$)/i.test(url);
+  };
+
+  const isMediaPickerOpen = showAttachmentPicker || Boolean(previewImageTarget);
+  const pickerItems = previewImageTarget ? mediaItems.filter(isImageMediaItem) : mediaItems;
 
   return (
     <div style={{
@@ -1945,9 +2110,9 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
         </div>
       </form>
 
-      {showAttachmentPicker ? (
+      {isMediaPickerOpen ? (
         <div
-          onClick={() => setShowAttachmentPicker(false)}
+          onClick={closeMediaPicker}
           style={{
             position: 'fixed',
             inset: 0,
@@ -1983,7 +2148,16 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
                 borderBottom: '1px solid #E5E7EB'
               }}
             >
-              <div style={{ fontSize: 16, fontWeight: 600, color: '#111827' }}>Select Attachable From Media</div>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: '#111827' }}>
+                  {previewImageTarget ? 'Select Image From Media' : 'Select Attachable From Media'}
+                </div>
+                {previewImageTarget?.currentSrc ? (
+                  <div style={{ marginTop: 4, fontSize: 12, color: '#6B7280', maxWidth: 520, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    Current image: {previewImageTarget.currentSrc}
+                  </div>
+                ) : null}
+              </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   type="button"
@@ -2002,7 +2176,7 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowAttachmentPicker(false)}
+                  onClick={closeMediaPicker}
                   style={{
                     border: '1px solid #D1D5DB',
                     borderRadius: 8,
@@ -2021,9 +2195,11 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
                 <div style={{ color: '#6B7280', fontSize: 14 }}>Loading media...</div>
               ) : mediaError ? (
                 <div style={{ color: '#DC2626', fontSize: 14 }}>{mediaError}</div>
-              ) : mediaItems.length === 0 ? (
+              ) : pickerItems.length === 0 ? (
                 <div style={{ color: '#6B7280', fontSize: 14 }}>
-                  No media found. Upload files from `/admin/media`.
+                  {previewImageTarget
+                    ? 'No images found. Upload images from `/admin/media`.'
+                    : 'No media found. Upload files from `/admin/media`.'}
                 </div>
               ) : (
                 <div
@@ -2033,11 +2209,17 @@ function AddEditPageForm({ onSave, onCancel, showNotification, editingPage, canR
                     gap: 12
                   }}
                 >
-                  {mediaItems.map((item) => (
+                  {pickerItems.map((item) => (
                     <button
                       type="button"
                       key={item.id}
-                      onClick={() => selectAttachment(item)}
+                      onClick={() => {
+                        if (previewImageTarget) {
+                          applySelectedPreviewImage(item);
+                        } else {
+                          selectAttachment(item);
+                        }
+                      }}
                       style={{
                         border: '1px solid #E5E7EB',
                         borderRadius: 10,

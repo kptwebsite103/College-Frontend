@@ -1,5 +1,21 @@
 import React, { useState, useEffect } from 'react';
 
+const getMenuId = (menuItem) => {
+  return menuItem?._id || menuItem?.id || '';
+};
+
+const getMenuLabel = (menuItem) => {
+  return (
+    menuItem?.menu_name_en ||
+    menuItem?.name?.en ||
+    menuItem?.title?.en ||
+    menuItem?.label ||
+    menuItem?.text ||
+    menuItem?.slug ||
+    'Untitled'
+  );
+};
+
 export default function AddMenuItemForm({
   menu,
   onSave,
@@ -13,7 +29,7 @@ export default function AddMenuItemForm({
     menu_name_kn: '',
     url_en: '',
     redirect_url: '',
-    parent_id: 0,
+    parent_id: '0',
     status: 'Created',
     order_no: 0
   });
@@ -62,7 +78,7 @@ export default function AddMenuItemForm({
         menu_name_kn: menu.name?.kn || menu.title?.kn || menu.menu_name_kn || '',
         url_en: menu.url_en || menu.url || '',
         redirect_url: menu.redirect_url || '',
-        parent_id: menu.parent_id || 0,
+        parent_id: String(menu.parent_id || '0'),
         status: canReview ? (menu.status || 'Created') : 'Created',
         order_no: menu.order_no || menu.order || 0
       });
@@ -93,7 +109,7 @@ export default function AddMenuItemForm({
     const { name, value = '' } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'parent_id' || name === 'order_no' ? (parseInt(value) || 0) : value
+      [name]: name === 'order_no' ? (parseInt(value, 10) || 0) : value
     }));
 
     // Auto-generate URL from menu_name_en only for new items or when URL is empty
@@ -127,6 +143,10 @@ export default function AddMenuItemForm({
     
     // Clear conflicting fields
     const submissionData = { ...formData, status: canReview ? formData.status : 'Created' };
+    submissionData.parent_id =
+      submissionData.parent_id && String(submissionData.parent_id) !== '0'
+        ? String(submissionData.parent_id)
+        : 0;
     if (submissionData.redirect_url) {
       submissionData.url_en = ''; // Clear internal URL when redirect URL is provided
     } else if (submissionData.url_en) {
@@ -141,6 +161,14 @@ export default function AddMenuItemForm({
       setLoading(false);
     }, 500);
   };
+
+  const currentMenuId = menu ? String(getMenuId(menu)) : '';
+  const parentOptions = (availableMenus || [])
+    .filter((item) => Boolean(getMenuId(item)))
+    .filter((item) => {
+      if (!currentMenuId) return true;
+      return String(getMenuId(item)) !== currentMenuId;
+    });
 
   return (
     <div className="card" style={{ padding: '20px' }}>
@@ -283,34 +311,26 @@ export default function AddMenuItemForm({
             <select
               id="parent_id"
               name="parent_id"
-              value={parentMenu ? parentMenu.id : formData.parent_id}
+              value={parentMenu ? String(getMenuId(parentMenu) || '0') : String(formData.parent_id ?? '0')}
               onChange={handleChange}
               className="form-control"
               disabled={!!parentMenu}
             >
               {parentMenu ? (
-                <option value={parentMenu.id}>{parentMenu.menu_name_en} (Current Parent)</option>
+                <option value={String(getMenuId(parentMenu) || '0')}>
+                  {getMenuLabel(parentMenu)} (Current Parent)
+                </option>
               ) : (
                 <>
-                  <option value={0}>Self Parent (Top Level)</option>
-                  {availableMenus
-                    .filter(m => {
-                      // Exclude current menu from parent options
-                      if (menu && m.id === menu.id) return false;
-
-                      // When creating main menu item (parentMenu is null), only show main menu items (parent_id: 0)
-                      if (!parentMenu) {
-                        return m.parent_id === 0;
-                      }
-
-                      // For subitems, show all menus (existing behavior)
-                      return true;
-                    })
-                    .map(m => (
-                    <option key={m.id} value={m.id}>
-                      {m.menu_name_en}
+                  <option value="0">Self Parent (Top Level)</option>
+                  {parentOptions.map((m) => {
+                    const optionId = String(getMenuId(m));
+                    return (
+                    <option key={optionId} value={optionId}>
+                      {getMenuLabel(m)}
                     </option>
-                  ))}
+                    );
+                  })}
                 </>
               )}
             </select>
