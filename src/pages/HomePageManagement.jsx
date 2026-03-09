@@ -1,54 +1,65 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   listHomeSections,
   createHomeSection,
   updateHomeSection,
   deleteHomeSection,
-  listMedia
-} from '../api/resources.js';
+  listMedia,
+  listPages,
+  createPage,
+} from "../api/resources.js";
+import { AddEditPageForm } from "./PagesPage.jsx";
+import { usePermissions } from "../utils/rolePermissions.js";
 
 const sectionTypes = [
-  { value: 'hero_text', label: 'Hero Top Text' },
-  { value: 'slider', label: 'Hero Carousel (Slides)' },
-  { value: 'banner', label: 'Hero Banner' },
-  { value: 'block', label: 'Custom HTML (Carousel)' }
+  { value: "hero_text", label: "Hero Top Text" },
+  { value: "slider", label: "Hero Carousel (Slides)" },
+  { value: "banner", label: "Hero Banner" },
+  { value: "block", label: "Custom HTML (Carousel)" },
+  { value: "page_content", label: "Homepage Content (CMS Page)" },
 ];
 
 const defaultHomeSections = [
   {
-    type: 'slider',
-    title: { en: 'Welcome Banner', kn: '' },
+    type: "slider",
+    title: { en: "Welcome Banner", kn: "" },
     active: true,
     order: 1,
     slides: [
       {
-        image: 'https://picsum.photos/1200/500?random=31',
-        title: { en: 'Welcome to Our College', kn: '' },
-        description: { en: 'Excellence in education and innovation.', kn: '' },
-        link: '/home',
-        order: 1
+        image: "https://picsum.photos/1200/500?random=31",
+        title: { en: "Welcome to Our College", kn: "" },
+        description: { en: "Excellence in education and innovation.", kn: "" },
+        link: "/home",
+        order: 1,
       },
       {
-        image: 'https://picsum.photos/1200/500?random=32',
-        title: { en: 'Admissions Open', kn: '' },
-        description: { en: 'Apply now for the upcoming academic year.', kn: '' },
-        link: '/home',
-        order: 2
-      }
-    ]
+        image: "https://picsum.photos/1200/500?random=32",
+        title: { en: "Admissions Open", kn: "" },
+        description: {
+          en: "Apply now for the upcoming academic year.",
+          kn: "",
+        },
+        link: "/home",
+        order: 2,
+      },
+    ],
   },
   {
-    type: 'banner',
-    title: { en: 'Latest Announcements', kn: '' },
+    type: "banner",
+    title: { en: "Latest Announcements", kn: "" },
     active: true,
     order: 2,
-    bannerImage: 'https://picsum.photos/1200/500?random=33',
-    bannerDescription: { en: 'Keep track of the latest campus updates and notices.', kn: '' },
-    bannerLink: '/home'
+    bannerImage: "https://picsum.photos/1200/500?random=33",
+    bannerDescription: {
+      en: "Keep track of the latest campus updates and notices.",
+      kn: "",
+    },
+    bannerLink: "/home",
   },
   {
-    type: 'block',
-    title: { en: 'Photo Gallery', kn: '' },
+    type: "block",
+    title: { en: "Photo Gallery", kn: "" },
     active: true,
     order: 3,
     blockContent: {
@@ -62,9 +73,9 @@ const defaultHomeSections = [
           </div>
         </section>
       `,
-      kn: ''
-    }
-  }
+      kn: "",
+    },
+  },
 ];
 
 const sampleCarouselHtml = `
@@ -135,56 +146,71 @@ const sampleCarouselHtml = `
 `.trim();
 
 function getTitle(section) {
-  if (!section) return 'Untitled';
-  return section.title?.en || section.title?.kn || 'Untitled';
+  if (!section) return "Untitled";
+  return section.title?.en || section.title?.kn || "Untitled";
 }
 
 function normalizeMediaEntry(item) {
   if (!item) return null;
-  const url = item.url || item.secure_url || '';
+  const url = item.url || item.secure_url || "";
   if (!url) return null;
   return {
     id: item._id || item.id || url,
-    title: item.title || item.filename || item.originalFilename || item.name || 'Untitled',
-    type: String(item.type || '').toLowerCase(),
+    title:
+      item.title ||
+      item.filename ||
+      item.originalFilename ||
+      item.name ||
+      "Untitled",
+    type: String(item.type || "").toLowerCase(),
     url,
     thumbnail: item.thumbnailUrl || item.thumbnail || url,
-    createdAt: item.createdAt || ''
+    createdAt: item.createdAt || "",
   };
 }
 
 function isImageMedia(item) {
   if (!item?.url) return false;
-  if (item.type === 'image') return true;
+  if (item.type === "image") return true;
   return /\.(avif|bmp|gif|jpe?g|png|svg|webp)(\?|#|$)/i.test(item.url);
 }
 
 function isVideoMedia(item) {
   if (!item?.url) return false;
-  if (item.type === 'video') return true;
-  return /\/video\/upload\//i.test(item.url) || /\.(mp4|webm|ogg|mov|m4v|avi|mkv)(\?|#|$)/i.test(item.url);
+  if (item.type === "video") return true;
+  return (
+    /\/video\/upload\//i.test(item.url) ||
+    /\.(mp4|webm|ogg|mov|m4v|avi|mkv)(\?|#|$)/i.test(item.url)
+  );
 }
 
 function isCarouselMedia(item) {
   return isImageMedia(item) || isVideoMedia(item);
 }
 
-function isVideoUrl(url = '') {
-  return /\/video\/upload\//i.test(url) || /\.(mp4|webm|ogg|mov|m4v|avi|mkv)(\?|#|$)/i.test(url);
+function isVideoUrl(url = "") {
+  return (
+    /\/video\/upload\//i.test(url) ||
+    /\.(mp4|webm|ogg|mov|m4v|avi|mkv)(\?|#|$)/i.test(url)
+  );
 }
 
 export default function HomePageManagement() {
   const [sections, setSections] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingSection, setEditingSection] = useState(null);
-  const [notification, setNotification] = useState({ show: false, type: '', message: '' });
+  const [notification, setNotification] = useState({
+    show: false,
+    type: "",
+    message: "",
+  });
   const [loading, setLoading] = useState(true);
   const [restoringDefaults, setRestoringDefaults] = useState(false);
 
   const showNotification = (type, message) => {
     setNotification({ show: true, type, message });
     setTimeout(() => {
-      setNotification({ show: false, type: '', message: '' });
+      setNotification({ show: false, type: "", message: "" });
     }, 3000);
   };
 
@@ -193,11 +219,13 @@ export default function HomePageManagement() {
     try {
       const data = await listHomeSections({ limit: 50 });
       const list = Array.isArray(data) ? data : [];
-      const sorted = list.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+      const sorted = list
+        .slice()
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
       setSections(sorted);
     } catch (error) {
-      console.error('Failed to load home sections:', error);
-      showNotification('error', 'Failed to load homepage sections.');
+      console.error("Failed to load home sections:", error);
+      showNotification("error", "Failed to load homepage sections.");
     } finally {
       setLoading(false);
     }
@@ -218,14 +246,15 @@ export default function HomePageManagement() {
   };
 
   const handleDeleteSection = async (sectionId) => {
-    if (!window.confirm('Are you sure you want to delete this section?')) return;
+    if (!window.confirm("Are you sure you want to delete this section?"))
+      return;
     try {
       await deleteHomeSection(sectionId);
-      showNotification('success', 'Section deleted successfully.');
+      showNotification("success", "Section deleted successfully.");
       loadSections();
     } catch (error) {
-      console.error('Failed to delete section:', error);
-      showNotification('error', 'Failed to delete section.');
+      console.error("Failed to delete section:", error);
+      showNotification("error", "Failed to delete section.");
     }
   };
 
@@ -233,17 +262,17 @@ export default function HomePageManagement() {
     try {
       if (editingSection && editingSection._id) {
         await updateHomeSection(editingSection._id, sectionData);
-        showNotification('success', 'Section updated successfully.');
+        showNotification("success", "Section updated successfully.");
       } else {
         await createHomeSection(sectionData);
-        showNotification('success', 'Section added successfully.');
+        showNotification("success", "Section added successfully.");
       }
       setShowAddForm(false);
       setEditingSection(null);
       loadSections();
     } catch (error) {
-      console.error('Failed to save section:', error);
-      showNotification('error', 'Failed to save section.');
+      console.error("Failed to save section:", error);
+      showNotification("error", "Failed to save section.");
     }
   };
 
@@ -253,11 +282,14 @@ export default function HomePageManagement() {
       for (const payload of defaultHomeSections) {
         await createHomeSection(payload);
       }
-      showNotification('success', 'Default homepage components restored.');
+      showNotification("success", "Default homepage components restored.");
       await loadSections();
     } catch (error) {
-      console.error('Failed to restore default homepage sections:', error);
-      showNotification('error', 'Failed to restore default homepage components.');
+      console.error("Failed to restore default homepage sections:", error);
+      showNotification(
+        "error",
+        "Failed to restore default homepage components.",
+      );
     } finally {
       setRestoringDefaults(false);
     }
@@ -267,13 +299,15 @@ export default function HomePageManagement() {
     if (!section?._id) return;
     const nextActive = !section.active;
     setSections((prev) =>
-      prev.map((item) => (item._id === section._id ? { ...item, active: nextActive } : item))
+      prev.map((item) =>
+        item._id === section._id ? { ...item, active: nextActive } : item,
+      ),
     );
     try {
       await updateHomeSection(section._id, { active: nextActive });
     } catch (error) {
-      console.error('Failed to toggle section:', error);
-      showNotification('error', 'Failed to update section.');
+      console.error("Failed to toggle section:", error);
+      showNotification("error", "Failed to update section.");
       loadSections();
     }
   };
@@ -282,15 +316,18 @@ export default function HomePageManagement() {
     const index = sections.findIndex((section) => section._id === sectionId);
     if (index < 0) return;
 
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= sections.length) return;
 
     const reordered = [...sections];
-    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+    [reordered[index], reordered[targetIndex]] = [
+      reordered[targetIndex],
+      reordered[index],
+    ];
 
     const updated = reordered.map((sectionItem, idx) => ({
       ...sectionItem,
-      order: idx + 1
+      order: idx + 1,
     }));
 
     setSections(updated);
@@ -298,39 +335,47 @@ export default function HomePageManagement() {
     try {
       await Promise.all([
         updateHomeSection(updated[index]._id, { order: updated[index].order }),
-        updateHomeSection(updated[targetIndex]._id, { order: updated[targetIndex].order })
+        updateHomeSection(updated[targetIndex]._id, {
+          order: updated[targetIndex].order,
+        }),
       ]);
     } catch (error) {
-      console.error('Failed to reorder sections:', error);
-      showNotification('error', 'Failed to reorder sections.');
+      console.error("Failed to reorder sections:", error);
+      showNotification("error", "Failed to reorder sections.");
       loadSections();
     }
   };
 
   const getSectionIcon = (type) => {
     switch (type) {
-      case 'hero_text':
+      case "hero_text":
         return (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="#7C3AED">
             <path d="M4 4h16v3h-6v13h-4V7H4V4zm1 17h14v-2H5v2z" />
           </svg>
         );
-      case 'slider':
+      case "slider":
         return (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="#3B82F6">
             <path d="M3 5h18v14H3V5zm2 2v10h14V7H5zm2 2h10v2H7V9zm0 4h6v2H7v-2z" />
           </svg>
         );
-      case 'banner':
+      case "banner":
         return (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="#F59E0B">
             <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM5 15h14v3H5z" />
           </svg>
         );
-      case 'block':
+      case "block":
         return (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="#10B981">
             <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h10v2H4v-2z" />
+          </svg>
+        );
+      case "page_content":
+        return (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B5CF6">
+            <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
           </svg>
         );
       default:
@@ -357,20 +402,20 @@ export default function HomePageManagement() {
   }
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto" }}>
       {notification.show ? (
         <div
           className="notification"
           style={{
-            position: 'fixed',
-            top: '80px',
-            right: '20px',
+            position: "fixed",
+            top: "80px",
+            right: "20px",
             zIndex: 2000,
-            background: notification.type === 'success' ? '#10B981' : '#EF4444',
-            color: 'white',
-            padding: '12px 20px',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+            background: notification.type === "success" ? "#10B981" : "#EF4444",
+            color: "white",
+            padding: "12px 20px",
+            borderRadius: "8px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
           }}
         >
           {notification.message}
@@ -379,19 +424,26 @@ export default function HomePageManagement() {
 
       <div
         style={{
-          marginBottom: '24px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
+          marginBottom: "24px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
           gap: 12,
-          flexWrap: 'wrap'
+          flexWrap: "wrap",
         }}
       >
         <div>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '600', color: '#1F2937' }}>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: "24px",
+              fontWeight: "600",
+              color: "#1F2937",
+            }}
+          >
             Homepage Management
           </h1>
-          <p style={{ margin: '8px 0 0', color: '#6B7280', fontSize: '14px' }}>
+          <p style={{ margin: "8px 0 0", color: "#6B7280", fontSize: "14px" }}>
             Manage homepage sections and their order
           </p>
         </div>
@@ -399,14 +451,14 @@ export default function HomePageManagement() {
           type="button"
           onClick={handleAddSection}
           style={{
-            padding: '10px 16px',
-            border: 'none',
-            borderRadius: '8px',
-            background: '#2563EB',
-            color: 'white',
-            fontSize: '14px',
+            padding: "10px 16px",
+            border: "none",
+            borderRadius: "8px",
+            background: "#2563EB",
+            color: "white",
+            fontSize: "14px",
             fontWeight: 600,
-            cursor: 'pointer'
+            cursor: "pointer",
           }}
         >
           Add Section
@@ -414,243 +466,307 @@ export default function HomePageManagement() {
       </div>
 
       {loading ? (
-        <div style={{ padding: '16px', color: '#6B7280' }}>Loading sections...</div>
+        <div style={{ padding: "16px", color: "#6B7280" }}>
+          Loading sections...
+        </div>
       ) : (
         <div>
           {sections.length === 0 ? (
             <div
               style={{
-                background: '#F9FAFB',
-                border: '1px dashed #D1D5DB',
-                borderRadius: '14px',
-                padding: '20px',
-                marginBottom: '20px'
+                background: "#F9FAFB",
+                border: "1px dashed #D1D5DB",
+                borderRadius: "14px",
+                padding: "20px",
+                marginBottom: "20px",
               }}
             >
-              <div style={{ fontWeight: 600, color: '#111827', marginBottom: 8 }}>
+              <div
+                style={{ fontWeight: 600, color: "#111827", marginBottom: 8 }}
+              >
                 Homepage components are currently empty.
               </div>
-              <div style={{ color: '#6B7280', fontSize: 14, marginBottom: 12 }}>
-                Restore the default set (hero banner, announcements, photo gallery) with one click.
+              <div style={{ color: "#6B7280", fontSize: 14, marginBottom: 12 }}>
+                Restore the default set (hero banner, announcements, photo
+                gallery) with one click.
               </div>
               <button
                 onClick={handleRestoreDefaultComponents}
                 disabled={restoringDefaults}
                 style={{
-                  padding: '10px 14px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  background: restoringDefaults ? '#9CA3AF' : '#2563EB',
-                  color: 'white',
-                  fontSize: '14px',
+                  padding: "10px 14px",
+                  border: "none",
+                  borderRadius: "8px",
+                  background: restoringDefaults ? "#9CA3AF" : "#2563EB",
+                  color: "white",
+                  fontSize: "14px",
                   fontWeight: 600,
-                  cursor: restoringDefaults ? 'not-allowed' : 'pointer'
+                  cursor: restoringDefaults ? "not-allowed" : "pointer",
                 }}
               >
-                {restoringDefaults ? 'Restoring...' : 'Restore Default Components'}
+                {restoringDefaults
+                  ? "Restoring..."
+                  : "Restore Default Components"}
               </button>
             </div>
           ) : null}
           <div
             style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-              gap: '20px'
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+              gap: "20px",
             }}
           >
-          {sections.map((section, index) => (
+            {sections.map((section, index) => (
+              <div
+                key={section._id}
+                style={{
+                  background: "white",
+                  borderRadius: "16px",
+                  padding: "20px",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+                  border: "1px solid #E5E7EB",
+                  transition: "all 0.2s ease",
+                  opacity: section.active ? "1" : "0.6",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: "12px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        borderRadius: "10px",
+                        background: "#F3F4F6",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {getSectionIcon(section.type)}
+                    </div>
+                    <div>
+                      <h3
+                        style={{
+                          margin: 0,
+                          fontSize: "16px",
+                          fontWeight: "600",
+                          color: "#1F2937",
+                        }}
+                      >
+                        {getTitle(section)}
+                      </h3>
+                      <p
+                        style={{
+                          margin: "2px 0 0",
+                          fontSize: "12px",
+                          color: "#9CA3AF",
+                        }}
+                      >
+                        {sectionTypes.find(
+                          (type) => type.value === section.type,
+                        )?.label || "Section"}
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "4px" }}>
+                    <button
+                      onClick={() => handleMoveSection(section._id, "up")}
+                      disabled={index === 0}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        cursor: index === 0 ? "not-allowed" : "pointer",
+                        padding: "4px",
+                        opacity: index === 0 ? "0.3" : "1",
+                        color: "#6B7280",
+                      }}
+                      title="Move Up"
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleMoveSection(section._id, "down")}
+                      disabled={index === sections.length - 1}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        cursor:
+                          index === sections.length - 1
+                            ? "not-allowed"
+                            : "pointer",
+                        padding: "4px",
+                        opacity: index === sections.length - 1 ? "0.3" : "1",
+                        color: "#6B7280",
+                      }}
+                      title="Move Down"
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    marginBottom: "16px",
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "inline-block",
+                      padding: "4px 10px",
+                      borderRadius: "20px",
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      background: section.active ? "#10B981" : "#6B7280",
+                      color: "white",
+                    }}
+                  >
+                    {section.active ? "Active" : "Inactive"}
+                  </span>
+                  <span style={{ fontSize: "12px", color: "#9CA3AF" }}>
+                    Order: {section.order || index + 1}
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "8px",
+                    justifyContent: "flex-end",
+                  }}
+                >
+                  <button
+                    onClick={() => handleToggleActive(section)}
+                    style={{
+                      padding: "8px 16px",
+                      border: "1px solid #D1D5DB",
+                      borderRadius: "8px",
+                      background: "transparent",
+                      color: "#374151",
+                      fontSize: "13px",
+                      fontWeight: "500",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {section.active ? "Disable" : "Enable"}
+                  </button>
+                  <button
+                    onClick={() => handleEditSection(section)}
+                    style={{
+                      padding: "8px 16px",
+                      border: "none",
+                      borderRadius: "8px",
+                      background: "#3B82F6",
+                      color: "white",
+                      fontSize: "13px",
+                      fontWeight: "500",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteSection(section._id)}
+                    style={{
+                      padding: "8px 16px",
+                      border: "none",
+                      borderRadius: "8px",
+                      background: "#EF4444",
+                      color: "white",
+                      fontSize: "13px",
+                      fontWeight: "500",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+
             <div
-              key={section._id}
+              onClick={handleAddSection}
               style={{
-                background: 'white',
-                borderRadius: '16px',
-                padding: '20px',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-                border: '1px solid #E5E7EB',
-                transition: 'all 0.2s ease',
-                opacity: section.active ? '1' : '0.6'
+                background: "white",
+                borderRadius: "16px",
+                padding: "20px",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+                border: "2px dashed #D1D5DB",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: "200px",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(event) => {
+                event.currentTarget.style.borderColor = "#3B82F6";
+                event.currentTarget.style.background = "#F0F7FF";
+              }}
+              onMouseLeave={(event) => {
+                event.currentTarget.style.borderColor = "#D1D5DB";
+                event.currentTarget.style.background = "white";
               }}
             >
               <div
                 style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  marginBottom: '12px'
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "50%",
+                  background: "#F3F4F6",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "12px",
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '10px',
-                      background: '#F3F4F6',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    {getSectionIcon(section.type)}
-                  </div>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1F2937' }}>
-                      {getTitle(section)}
-                    </h3>
-                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#9CA3AF' }}>
-                      {sectionTypes.find((type) => type.value === section.type)?.label || 'Section'}
-                    </p>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  <button
-                    onClick={() => handleMoveSection(section._id, 'up')}
-                    disabled={index === 0}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      cursor: index === 0 ? 'not-allowed' : 'pointer',
-                      padding: '4px',
-                      opacity: index === 0 ? '0.3' : '1',
-                      color: '#6B7280'
-                    }}
-                    title="Move Up"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => handleMoveSection(section._id, 'down')}
-                    disabled={index === sections.length - 1}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      cursor: index === sections.length - 1 ? 'not-allowed' : 'pointer',
-                      padding: '4px',
-                      opacity: index === sections.length - 1 ? '0.3' : '1',
-                      color: '#6B7280'
-                    }}
-                    title="Move Down"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
-                    </svg>
-                  </button>
-                </div>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#9CA3AF">
+                  <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                </svg>
               </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                <span
-                  style={{
-                    display: 'inline-block',
-                    padding: '4px 10px',
-                    borderRadius: '20px',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    background: section.active ? '#10B981' : '#6B7280',
-                    color: 'white'
-                  }}
-                >
-                  {section.active ? 'Active' : 'Inactive'}
-                </span>
-                <span style={{ fontSize: '12px', color: '#9CA3AF' }}>Order: {section.order || index + 1}</span>
-              </div>
-
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                <button
-                  onClick={() => handleToggleActive(section)}
-                  style={{
-                    padding: '8px 16px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    background: 'transparent',
-                    color: '#374151',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {section.active ? 'Disable' : 'Enable'}
-                </button>
-                <button
-                  onClick={() => handleEditSection(section)}
-                  style={{
-                    padding: '8px 16px',
-                    border: 'none',
-                    borderRadius: '8px',
-                    background: '#3B82F6',
-                    color: 'white',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDeleteSection(section._id)}
-                  style={{
-                    padding: '8px 16px',
-                    border: 'none',
-                    borderRadius: '8px',
-                    background: '#EF4444',
-                    color: 'white',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
+              <span
+                style={{
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  color: "#6B7280",
+                }}
+              >
+                Add New Section
+              </span>
             </div>
-          ))}
-
-          <div
-            onClick={handleAddSection}
-            style={{
-              background: 'white',
-              borderRadius: '16px',
-              padding: '20px',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-              border: '2px dashed #D1D5DB',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '200px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(event) => {
-              event.currentTarget.style.borderColor = '#3B82F6';
-              event.currentTarget.style.background = '#F0F7FF';
-            }}
-            onMouseLeave={(event) => {
-              event.currentTarget.style.borderColor = '#D1D5DB';
-              event.currentTarget.style.background = 'white';
-            }}
-          >
-            <div
-              style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '50%',
-                background: '#F3F4F6',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '12px'
-              }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="#9CA3AF">
-                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-              </svg>
-            </div>
-            <span style={{ fontSize: '14px', fontWeight: '500', color: '#6B7280' }}>Add New Section</span>
           </div>
-        </div>
         </div>
       )}
     </div>
@@ -658,68 +774,161 @@ export default function HomePageManagement() {
 }
 
 function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
-  const [language, setLanguage] = useState('en');
+  const [language, setLanguage] = useState("en");
   const [formData, setFormData] = useState({
-    type: section?.type || 'slider',
-    title_en: section?.title?.en || '',
-    title_kn: section?.title?.kn || '',
+    type: section?.type || "slider",
+    title_en: section?.title?.en || "",
+    title_kn: section?.title?.kn || "",
     order: section?.order || 1,
     active: section?.active !== false,
-    heroHeading_en: section?.heroHeading?.en || '',
-    heroHeading_kn: section?.heroHeading?.kn || '',
-    heroDescription_en: section?.heroDescription?.en || '',
-    heroDescription_kn: section?.heroDescription?.kn || '',
+    heroHeading_en: section?.heroHeading?.en || "",
+    heroHeading_kn: section?.heroHeading?.kn || "",
+    heroDescription_en: section?.heroDescription?.en || "",
+    heroDescription_kn: section?.heroDescription?.kn || "",
     heroHeadingSize: section?.heroHeadingSize || 42,
-    heroTextAlign: section?.heroTextAlign || 'center',
-    bannerImage: section?.bannerImage || '',
-    bannerDescription_en: section?.bannerDescription?.en || '',
-    bannerDescription_kn: section?.bannerDescription?.kn || '',
-    bannerLink: section?.bannerLink || '',
-    blockContent_en: typeof section?.blockContent?.en === 'string' ? section.blockContent.en : '',
-    blockContent_kn: typeof section?.blockContent?.kn === 'string' ? section.blockContent.kn : '',
-    slides: Array.isArray(section?.slides) && section.slides.length > 0
-      ? section.slides.map((slide, idx) => ({
-          image: slide.image || '',
-          link: slide.link || '',
-          order: slide.order || idx + 1,
-          title: {
-            en: slide.title?.en || '',
-            kn: slide.title?.kn || ''
-          },
-          description: {
-            en: slide.description?.en || '',
-            kn: slide.description?.kn || ''
-          }
-        }))
-      : [
-          {
-            image: '',
-            link: '',
-            order: 1,
-            title: { en: '', kn: '' },
-            description: { en: '', kn: '' }
-          }
-        ]
+    heroTextAlign: section?.heroTextAlign || "center",
+    bannerImage: section?.bannerImage || "",
+    bannerDescription_en: section?.bannerDescription?.en || "",
+    bannerDescription_kn: section?.bannerDescription?.kn || "",
+    bannerLink: section?.bannerLink || "",
+    blockContent_en:
+      typeof section?.blockContent?.en === "string"
+        ? section.blockContent.en
+        : "",
+    blockContent_kn:
+      typeof section?.blockContent?.kn === "string"
+        ? section.blockContent.kn
+        : "",
+    pageSlug: section?.pageSlug || "",
+    slides:
+      Array.isArray(section?.slides) && section.slides.length > 0
+        ? section.slides.map((slide, idx) => ({
+            image: slide.image || "",
+            link: slide.link || "",
+            order: slide.order || idx + 1,
+            title: {
+              en: slide.title?.en || "",
+              kn: slide.title?.kn || "",
+            },
+            description: {
+              en: slide.description?.en || "",
+              kn: slide.description?.kn || "",
+            },
+          }))
+        : [
+            {
+              image: "",
+              link: "",
+              order: 1,
+              title: { en: "", kn: "" },
+              description: { en: "", kn: "" },
+            },
+          ],
   });
   const [mediaItems, setMediaItems] = useState([]);
   const [mediaLoading, setMediaLoading] = useState(false);
-  const [mediaError, setMediaError] = useState('');
+  const [mediaError, setMediaError] = useState("");
   const [pickerTarget, setPickerTarget] = useState(null);
+  const [cmsPages, setCmsPages] = useState([]);
+  const [loadingPages, setLoadingPages] = useState(false);
+  const [showPageEditor, setShowPageEditor] = useState(false);
+  const { isAdmin, isSuperAdmin } = usePermissions();
+  const canReview = isAdmin || isSuperAdmin;
+  const [pageNotification, setPageNotification] = useState({
+    show: false,
+    type: "",
+    message: "",
+  });
+
+  const showPageNotification = (type, message) => {
+    setPageNotification({ show: true, type, message });
+    setTimeout(() => {
+      setPageNotification({ show: false, type: "", message: "" });
+    }, 3000);
+  };
+
+  const handleSaveNewPage = async (pageData) => {
+    try {
+      const restrictedRoutes = ["/", "/home"];
+      if (restrictedRoutes.includes(pageData.slug?.toLowerCase().trim())) {
+        showPageNotification("error", 'Routes "/" and "/home" are reserved.');
+        return;
+      }
+      const pagePayload = {
+        title: { en: pageData.title_en, kn: pageData.title_kn },
+        slug: pageData.slug,
+        redirect_url: pageData.redirect_url,
+        css: pageData.css || "",
+        content: {
+          en: {
+            html: pageData.content_en.html || "",
+            javascript: pageData.content_en.javascript || "",
+          },
+          kn: {
+            html: pageData.content_kn.html || "",
+            javascript: pageData.content_kn.javascript || "",
+          },
+        },
+        status: canReview ? pageData.status || "pending" : "pending",
+        tags: Array.isArray(pageData.tags)
+          ? pageData.tags.filter((tag) => String(tag || "").trim())
+          : [],
+        announcement: null,
+      };
+
+      await createPage(pagePayload);
+      showPageNotification("success", "Page created successfully!");
+      setFormData((prev) => ({ ...prev, pageSlug: pagePayload.slug }));
+
+      listPages().then((pages) => {
+        if (Array.isArray(pages))
+          setCmsPages(
+            pages.filter(
+              (p) => p.status === "Approved" || p.slug === pagePayload.slug,
+            ),
+          );
+      });
+      setShowPageEditor(false);
+    } catch (error) {
+      console.error("Error saving page:", error);
+      showPageNotification("error", "Failed to save page. Please try again.");
+    }
+  };
+
+  useEffect(() => {
+    // Only load pages if type is page_content or trying to switch to it
+    if (
+      formData.type === "page_content" &&
+      cmsPages.length === 0 &&
+      !loadingPages
+    ) {
+      setLoadingPages(true);
+      listPages()
+        .then((pages) => {
+          if (Array.isArray(pages)) {
+            setCmsPages(pages.filter((p) => p.status === "Approved"));
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoadingPages(false));
+    }
+  }, [formData.type]);
 
   const loadPickerMedia = async (target = pickerTarget) => {
     setMediaLoading(true);
-    setMediaError('');
+    setMediaError("");
     try {
       const data = await listMedia();
-      const mediaFilter = target?.kind === 'slide' ? isCarouselMedia : isImageMedia;
+      const mediaFilter =
+        target?.kind === "slide" ? isCarouselMedia : isImageMedia;
       const normalized = Array.isArray(data)
         ? data.map(normalizeMediaEntry).filter(mediaFilter)
         : [];
       setMediaItems(normalized);
     } catch (error) {
-      console.error('Failed to load media library:', error);
+      console.error("Failed to load media library:", error);
       setMediaItems([]);
-      setMediaError('Failed to load media library.');
+      setMediaError("Failed to load media library.");
     } finally {
       setMediaLoading(false);
     }
@@ -738,12 +947,12 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
 
   const handleSelectMedia = (url) => {
     if (!pickerTarget || !url) return;
-    if (pickerTarget.kind === 'banner') {
+    if (pickerTarget.kind === "banner") {
       setFormData((prev) => ({ ...prev, bannerImage: url }));
-    } else if (pickerTarget.kind === 'slide') {
+    } else if (pickerTarget.kind === "slide") {
       setFormData((prev) => {
         const slides = prev.slides.map((slide, slideIndex) =>
-          slideIndex === pickerTarget.index ? { ...slide, image: url } : slide
+          slideIndex === pickerTarget.index ? { ...slide, image: url } : slide,
         );
         return { ...prev, slides };
       });
@@ -752,24 +961,25 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
   };
 
   const getCurrentPickerValue = () => {
-    if (!pickerTarget) return '';
-    if (pickerTarget.kind === 'banner') return formData.bannerImage || '';
-    if (pickerTarget.kind === 'slide') return formData.slides[pickerTarget.index]?.image || '';
-    return '';
+    if (!pickerTarget) return "";
+    if (pickerTarget.kind === "banner") return formData.bannerImage || "";
+    if (pickerTarget.kind === "slide")
+      return formData.slides[pickerTarget.index]?.image || "";
+    return "";
   };
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
   const handleSlideChange = (index, field, value) => {
     setFormData((prev) => {
       const slides = prev.slides.map((slide, slideIndex) =>
-        slideIndex === index ? { ...slide, [field]: value } : slide
+        slideIndex === index ? { ...slide, [field]: value } : slide,
       );
       return { ...prev, slides };
     });
@@ -783,8 +993,8 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
           ...slide,
           [field]: {
             ...slide[field],
-            [language]: value
-          }
+            [language]: value,
+          },
         };
       });
       return { ...prev, slides };
@@ -797,13 +1007,13 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
       slides: [
         ...prev.slides,
         {
-          image: '',
-          link: '',
+          image: "",
+          link: "",
           order: prev.slides.length + 1,
-          title: { en: '', kn: '' },
-          description: { en: '', kn: '' }
-        }
-      ]
+          title: { en: "", kn: "" },
+          description: { en: "", kn: "" },
+        },
+      ],
     }));
   };
 
@@ -811,10 +1021,15 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
     closeMediaPicker();
     setFormData((prev) => {
       if (prev.slides.length <= 1) return prev;
-      const slides = prev.slides.filter((_, slideIndex) => slideIndex !== index);
+      const slides = prev.slides.filter(
+        (_, slideIndex) => slideIndex !== index,
+      );
       return {
         ...prev,
-        slides: slides.map((slide, slideIndex) => ({ ...slide, order: slideIndex + 1 }))
+        slides: slides.map((slide, slideIndex) => ({
+          ...slide,
+          order: slideIndex + 1,
+        })),
       };
     });
   };
@@ -822,7 +1037,7 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
   const handleSubmit = (event) => {
     event.preventDefault();
     const cleanString = (value) => {
-      if (typeof value !== 'string') return '';
+      if (typeof value !== "string") return "";
       return value.trim();
     };
 
@@ -830,145 +1045,213 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
       type: formData.type,
       title: {
         en: formData.title_en,
-        kn: formData.title_kn
+        kn: formData.title_kn,
       },
       active: formData.active,
-      order: Number(formData.order) || 1
+      order: Number(formData.order) || 1,
     };
 
-    if (formData.type === 'banner') {
+    if (formData.type === "banner") {
       const bannerImage = cleanString(formData.bannerImage);
       if (!bannerImage) {
-        alert('Banner image is required.');
+        alert("Banner image is required.");
         return;
       }
       payload.bannerImage = bannerImage;
       payload.bannerDescription = {
         en: formData.bannerDescription_en,
-        kn: formData.bannerDescription_kn
+        kn: formData.bannerDescription_kn,
       };
       const bannerLink = cleanString(formData.bannerLink);
       if (bannerLink) payload.bannerLink = bannerLink;
     }
 
-    if (formData.type === 'hero_text') {
+    if (formData.type === "hero_text") {
       payload.heroHeading = {
         en: formData.heroHeading_en,
-        kn: formData.heroHeading_kn
+        kn: formData.heroHeading_kn,
       };
       payload.heroDescription = {
         en: formData.heroDescription_en,
-        kn: formData.heroDescription_kn
+        kn: formData.heroDescription_kn,
       };
       payload.heroHeadingSize = Number(formData.heroHeadingSize) || 42;
-      payload.heroTextAlign = formData.heroTextAlign || 'center';
+      payload.heroTextAlign = formData.heroTextAlign || "center";
     }
 
-    if (formData.type === 'slider') {
+    if (formData.type === "slider") {
       payload.slides = formData.slides.map((slide, index) => ({
         order: Number(slide.order) || index + 1,
         title: {
-          en: slide.title?.en || '',
-          kn: slide.title?.kn || ''
+          en: slide.title?.en || "",
+          kn: slide.title?.kn || "",
         },
         description: {
-          en: slide.description?.en || '',
-          kn: slide.description?.kn || ''
+          en: slide.description?.en || "",
+          kn: slide.description?.kn || "",
         },
-        ...(cleanString(slide.image) ? { image: cleanString(slide.image) } : {}),
-        ...(cleanString(slide.link) ? { link: cleanString(slide.link) } : {})
+        ...(cleanString(slide.image)
+          ? { image: cleanString(slide.image) }
+          : {}),
+        ...(cleanString(slide.link) ? { link: cleanString(slide.link) } : {}),
       }));
     }
 
-    if (formData.type === 'block') {
+    if (formData.type === "block") {
       payload.blockContent = {
         en: formData.blockContent_en,
-        kn: formData.blockContent_kn
+        kn: formData.blockContent_kn,
       };
+    }
+
+    if (formData.type === "page_content") {
+      const pageSlug = cleanString(formData.pageSlug);
+      if (!pageSlug) {
+        alert("Please select a CMS page.");
+        return;
+      }
+      payload.pageSlug = pageSlug;
     }
 
     onSave(payload);
   };
 
+  if (showPageEditor) {
+    return (
+      <div style={{ padding: "0" }}>
+        {pageNotification.show && (
+          <div
+            className="notification"
+            style={{
+              position: "fixed",
+              top: "80px",
+              right: "20px",
+              zIndex: 3000,
+              background:
+                pageNotification.type === "success" ? "#10B981" : "#EF4444",
+              color: "white",
+              padding: "12px 20px",
+              borderRadius: "8px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            }}
+          >
+            {pageNotification.message}
+          </div>
+        )}
+        <AddEditPageForm
+          onSave={handleSaveNewPage}
+          onCancel={() => setShowPageEditor(false)}
+          showNotification={showPageNotification}
+          editingPage={null}
+          canReview={canReview}
+          forceAnnouncement={false}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
-        background: 'white',
-        borderRadius: '16px',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-        border: '1px solid #E5E7EB',
-        overflow: 'hidden'
+        background: "white",
+        borderRadius: "16px",
+        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+        border: "1px solid #E5E7EB",
+        overflow: "hidden",
       }}
     >
       <div
         style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '16px 20px',
-          borderBottom: '1px solid #E5E7EB',
-          background: '#F9FAFB'
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "16px 20px",
+          borderBottom: "1px solid #E5E7EB",
+          background: "#F9FAFB",
         }}
       >
-        <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1F2937' }}>
-          {section ? 'Edit Section' : 'Add New Section'}
+        <h3
+          style={{
+            margin: 0,
+            fontSize: "18px",
+            fontWeight: "600",
+            color: "#1F2937",
+          }}
+        >
+          {section ? "Edit Section" : "Add New Section"}
         </h3>
         <button
           onClick={onCancel}
           style={{
-            background: 'transparent',
-            border: 'none',
-            fontSize: '20px',
-            cursor: 'pointer',
-            color: '#9CA3AF',
+            background: "transparent",
+            border: "none",
+            fontSize: "20px",
+            cursor: "pointer",
+            color: "#9CA3AF",
             padding: 0,
-            lineHeight: 1
+            lineHeight: 1,
           }}
         >
           X
         </button>
       </div>
 
-      <div style={{ display: 'flex', borderBottom: '1px solid #E5E7EB', background: '#FFFFFF' }}>
+      <div
+        style={{
+          display: "flex",
+          borderBottom: "1px solid #E5E7EB",
+          background: "#FFFFFF",
+        }}
+      >
         <button
-          onClick={() => setLanguage('en')}
+          onClick={() => setLanguage("en")}
           style={{
             flex: 1,
-            padding: '14px 20px',
-            border: 'none',
-            borderBottom: language === 'en' ? '2px solid #3B82F6' : '2px solid transparent',
-            background: language === 'en' ? '#F0F7FF' : 'transparent',
-            color: language === 'en' ? '#3B82F6' : '#6B7280',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
+            padding: "14px 20px",
+            border: "none",
+            borderBottom:
+              language === "en" ? "2px solid #3B82F6" : "2px solid transparent",
+            background: language === "en" ? "#F0F7FF" : "transparent",
+            color: language === "en" ? "#3B82F6" : "#6B7280",
+            fontSize: "14px",
+            fontWeight: "600",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
           }}
         >
           English
         </button>
         <button
-          onClick={() => setLanguage('kn')}
+          onClick={() => setLanguage("kn")}
           style={{
             flex: 1,
-            padding: '14px 20px',
-            border: 'none',
-            borderBottom: language === 'kn' ? '2px solid #3B82F6' : '2px solid transparent',
-            background: language === 'kn' ? '#F0F7FF' : 'transparent',
-            color: language === 'kn' ? '#3B82F6' : '#6B7280',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
+            padding: "14px 20px",
+            border: "none",
+            borderBottom:
+              language === "kn" ? "2px solid #3B82F6" : "2px solid transparent",
+            background: language === "kn" ? "#F0F7FF" : "transparent",
+            color: language === "kn" ? "#3B82F6" : "#6B7280",
+            fontSize: "14px",
+            fontWeight: "600",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
           }}
         >
           Kannada
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
+      <form onSubmit={handleSubmit} style={{ padding: "24px" }}>
+        <div style={{ marginBottom: "20px" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "8px",
+              fontWeight: "500",
+              color: "#374151",
+              fontSize: "14px",
+            }}
+          >
             Section Type
           </label>
           <select
@@ -976,13 +1259,13 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
             value={formData.type}
             onChange={handleChange}
             style={{
-              width: '100%',
-              padding: '12px',
-              border: '1px solid #D1D5DB',
-              borderRadius: '8px',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-              background: 'white'
+              width: "100%",
+              padding: "12px",
+              border: "1px solid #D1D5DB",
+              borderRadius: "8px",
+              fontSize: "14px",
+              boxSizing: "border-box",
+              background: "white",
             }}
           >
             {sectionTypes.map((type) => (
@@ -993,80 +1276,124 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
           </select>
         </div>
 
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
-            Title ({language === 'en' ? 'English' : 'Kannada'})
+        <div style={{ marginBottom: "20px" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "8px",
+              fontWeight: "500",
+              color: "#374151",
+              fontSize: "14px",
+            }}
+          >
+            Title ({language === "en" ? "English" : "Kannada"})
           </label>
           <input
             type="text"
-            name={language === 'en' ? 'title_en' : 'title_kn'}
-            value={language === 'en' ? formData.title_en : formData.title_kn}
+            name={language === "en" ? "title_en" : "title_kn"}
+            value={language === "en" ? formData.title_en : formData.title_kn}
             onChange={handleChange}
             placeholder="Enter section title"
             style={{
-              width: '100%',
-              padding: '12px',
-              border: '1px solid #D1D5DB',
-              borderRadius: '8px',
-              fontSize: language === 'kn' ? '16px' : '14px',
-              boxSizing: 'border-box'
+              width: "100%",
+              padding: "12px",
+              border: "1px solid #D1D5DB",
+              borderRadius: "8px",
+              fontSize: language === "kn" ? "16px" : "14px",
+              boxSizing: "border-box",
             }}
           />
         </div>
 
-        {formData.type === 'hero_text' ? (
+        {formData.type === "hero_text" ? (
           <>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
-                Main Heading ({language === 'en' ? 'English' : 'Kannada'})
+            <div style={{ marginBottom: "20px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontWeight: "500",
+                  color: "#374151",
+                  fontSize: "14px",
+                }}
+              >
+                Main Heading ({language === "en" ? "English" : "Kannada"})
               </label>
               <input
                 type="text"
-                name={language === 'en' ? 'heroHeading_en' : 'heroHeading_kn'}
-                value={language === 'en' ? formData.heroHeading_en : formData.heroHeading_kn}
+                name={language === "en" ? "heroHeading_en" : "heroHeading_kn"}
+                value={
+                  language === "en"
+                    ? formData.heroHeading_en
+                    : formData.heroHeading_kn
+                }
                 onChange={handleChange}
                 placeholder="Enter big heading text"
                 style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  fontSize: language === 'kn' ? '16px' : '14px',
-                  boxSizing: 'border-box'
+                  width: "100%",
+                  padding: "12px",
+                  border: "1px solid #D1D5DB",
+                  borderRadius: "8px",
+                  fontSize: language === "kn" ? "16px" : "14px",
+                  boxSizing: "border-box",
                 }}
               />
             </div>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
-                Description ({language === 'en' ? 'English' : 'Kannada'})
+            <div style={{ marginBottom: "20px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontWeight: "500",
+                  color: "#374151",
+                  fontSize: "14px",
+                }}
+              >
+                Description ({language === "en" ? "English" : "Kannada"})
               </label>
               <textarea
-                name={language === 'en' ? 'heroDescription_en' : 'heroDescription_kn'}
-                value={language === 'en' ? formData.heroDescription_en : formData.heroDescription_kn}
+                name={
+                  language === "en"
+                    ? "heroDescription_en"
+                    : "heroDescription_kn"
+                }
+                value={
+                  language === "en"
+                    ? formData.heroDescription_en
+                    : formData.heroDescription_kn
+                }
                 onChange={handleChange}
                 rows={4}
                 placeholder="Enter supporting description text"
                 style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  fontSize: language === 'kn' ? '16px' : '14px',
-                  resize: 'vertical',
-                  boxSizing: 'border-box'
+                  width: "100%",
+                  padding: "12px",
+                  border: "1px solid #D1D5DB",
+                  borderRadius: "8px",
+                  fontSize: language === "kn" ? "16px" : "14px",
+                  resize: "vertical",
+                  boxSizing: "border-box",
                 }}
               />
             </div>
             <div
               style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '20px',
-                marginBottom: '20px'
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "20px",
+                marginBottom: "20px",
               }}
             >
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: "500",
+                    color: "#374151",
+                    fontSize: "14px",
+                  }}
+                >
                   Heading Size (px)
                 </label>
                 <input
@@ -1077,17 +1404,25 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                   min="18"
                   max="120"
                   style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    boxSizing: 'border-box'
+                    width: "100%",
+                    padding: "12px",
+                    border: "1px solid #D1D5DB",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
                   }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: "500",
+                    color: "#374151",
+                    fontSize: "14px",
+                  }}
+                >
                   Text Position
                 </label>
                 <select
@@ -1095,13 +1430,13 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                   value={formData.heroTextAlign}
                   onChange={handleChange}
                   style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    boxSizing: 'border-box',
-                    background: 'white'
+                    width: "100%",
+                    padding: "12px",
+                    border: "1px solid #D1D5DB",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                    background: "white",
                   }}
                 >
                   <option value="left">Left</option>
@@ -1113,13 +1448,21 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
           </>
         ) : null}
 
-        {formData.type === 'banner' ? (
+        {formData.type === "banner" ? (
           <>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
+            <div style={{ marginBottom: "20px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontWeight: "500",
+                  color: "#374151",
+                  fontSize: "14px",
+                }}
+              >
                 Banner Image
               </label>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
                 <input
                   type="url"
                   name="bannerImage"
@@ -1129,31 +1472,31 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                   style={{
                     flex: 1,
                     minWidth: 0,
-                    padding: '12px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    boxSizing: 'border-box'
+                    padding: "12px",
+                    border: "1px solid #D1D5DB",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
                   }}
                 />
                 <button
                   type="button"
-                  onClick={() => openMediaPicker({ kind: 'banner' })}
+                  onClick={() => openMediaPicker({ kind: "banner" })}
                   style={{
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    background: '#F9FAFB',
-                    color: '#374151',
-                    fontSize: '13px',
+                    border: "1px solid #D1D5DB",
+                    borderRadius: "8px",
+                    background: "#F9FAFB",
+                    color: "#374151",
+                    fontSize: "13px",
                     fontWeight: 500,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap'
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
                   }}
                 >
                   Select from Media
                 </button>
               </div>
-              <div style={{ marginTop: 6, fontSize: 12, color: '#6B7280' }}>
+              <div style={{ marginTop: 6, fontSize: 12, color: "#6B7280" }}>
                 Paste a URL or choose an image from your media library.
               </div>
               {formData.bannerImage ? (
@@ -1162,39 +1505,63 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                     src={formData.bannerImage}
                     alt="Banner preview"
                     style={{
-                      width: '100%',
+                      width: "100%",
                       maxHeight: 180,
-                      objectFit: 'cover',
+                      objectFit: "cover",
                       borderRadius: 10,
-                      border: '1px solid #E5E7EB'
+                      border: "1px solid #E5E7EB",
                     }}
                   />
                 </div>
               ) : null}
             </div>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
-                Banner Description ({language === 'en' ? 'English' : 'Kannada'})
+            <div style={{ marginBottom: "20px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontWeight: "500",
+                  color: "#374151",
+                  fontSize: "14px",
+                }}
+              >
+                Banner Description ({language === "en" ? "English" : "Kannada"})
               </label>
               <textarea
-                name={language === 'en' ? 'bannerDescription_en' : 'bannerDescription_kn'}
-                value={language === 'en' ? formData.bannerDescription_en : formData.bannerDescription_kn}
+                name={
+                  language === "en"
+                    ? "bannerDescription_en"
+                    : "bannerDescription_kn"
+                }
+                value={
+                  language === "en"
+                    ? formData.bannerDescription_en
+                    : formData.bannerDescription_kn
+                }
                 onChange={handleChange}
                 rows={4}
                 placeholder="Describe the banner"
                 style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  fontSize: language === 'kn' ? '16px' : '14px',
-                  resize: 'vertical',
-                  boxSizing: 'border-box'
+                  width: "100%",
+                  padding: "12px",
+                  border: "1px solid #D1D5DB",
+                  borderRadius: "8px",
+                  fontSize: language === "kn" ? "16px" : "14px",
+                  resize: "vertical",
+                  boxSizing: "border-box",
                 }}
               />
             </div>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
+            <div style={{ marginBottom: "20px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontWeight: "500",
+                  color: "#374151",
+                  fontSize: "14px",
+                }}
+              >
                 Banner Link (optional)
               </label>
               <input
@@ -1204,32 +1571,43 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                 onChange={handleChange}
                 placeholder="https://example.com"
                 style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
+                  width: "100%",
+                  padding: "12px",
+                  border: "1px solid #D1D5DB",
+                  borderRadius: "8px",
+                  fontSize: "14px",
+                  boxSizing: "border-box",
                 }}
               />
             </div>
           </>
         ) : null}
 
-        {formData.type === 'slider' ? (
-          <div style={{ marginBottom: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <label style={{ fontWeight: 600, color: '#374151', fontSize: '14px' }}>Carousel Slides</label>
+        {formData.type === "slider" ? (
+          <div style={{ marginBottom: "20px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 12,
+              }}
+            >
+              <label
+                style={{ fontWeight: 600, color: "#374151", fontSize: "14px" }}
+              >
+                Carousel Slides
+              </label>
               <button
                 type="button"
                 onClick={addSlide}
                 style={{
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  padding: '6px 12px',
-                  background: '#F9FAFB',
-                  cursor: 'pointer',
-                  fontSize: '12px'
+                  border: "1px solid #D1D5DB",
+                  borderRadius: "8px",
+                  padding: "6px 12px",
+                  background: "#F9FAFB",
+                  cursor: "pointer",
+                  fontSize: "12px",
                 }}
               >
                 Add Slide
@@ -1238,18 +1616,30 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
             {formData.slides.map((slide, index) => (
               <div
                 key={`slide-${index}`}
-                style={{ border: '1px solid #E5E7EB', borderRadius: 12, padding: 16, marginBottom: 12 }}
+                style={{
+                  border: "1px solid #E5E7EB",
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 12,
+                }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginBottom: 12,
+                  }}
+                >
                   <strong>Slide {index + 1}</strong>
                   <button
                     type="button"
                     onClick={() => removeSlide(index)}
                     style={{
-                      border: 'none',
-                      background: 'transparent',
-                      color: '#EF4444',
-                      cursor: formData.slides.length <= 1 ? 'not-allowed' : 'pointer'
+                      border: "none",
+                      background: "transparent",
+                      color: "#EF4444",
+                      cursor:
+                        formData.slides.length <= 1 ? "not-allowed" : "pointer",
                     }}
                     disabled={formData.slides.length <= 1}
                   >
@@ -1257,33 +1647,39 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                   </button>
                 </div>
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13 }}>Slide Media (Image / Video)</label>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <label
+                    style={{ display: "block", marginBottom: 6, fontSize: 13 }}
+                  >
+                    Slide Media (Image / Video)
+                  </label>
+                  <div style={{ display: "flex", gap: 8 }}>
                     <input
                       type="url"
                       value={slide.image}
-                      onChange={(event) => handleSlideChange(index, 'image', event.target.value)}
+                      onChange={(event) =>
+                        handleSlideChange(index, "image", event.target.value)
+                      }
                       placeholder="https://example.com/slide.jpg or slide.mp4"
                       style={{
                         flex: 1,
                         minWidth: 0,
-                        padding: '10px',
-                        border: '1px solid #D1D5DB',
-                        borderRadius: '8px',
-                        fontSize: '14px'
+                        padding: "10px",
+                        border: "1px solid #D1D5DB",
+                        borderRadius: "8px",
+                        fontSize: "14px",
                       }}
                     />
                     <button
                       type="button"
-                      onClick={() => openMediaPicker({ kind: 'slide', index })}
+                      onClick={() => openMediaPicker({ kind: "slide", index })}
                       style={{
-                        border: '1px solid #D1D5DB',
-                        borderRadius: '8px',
-                        background: '#F9FAFB',
-                        color: '#374151',
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap'
+                        border: "1px solid #D1D5DB",
+                        borderRadius: "8px",
+                        background: "#F9FAFB",
+                        color: "#374151",
+                        fontSize: "12px",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
                       }}
                     >
                       Media
@@ -1298,12 +1694,12 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                         preload="metadata"
                         style={{
                           marginTop: 8,
-                          width: '100%',
+                          width: "100%",
                           maxHeight: 180,
-                          objectFit: 'contain',
+                          objectFit: "contain",
                           borderRadius: 8,
-                          border: '1px solid #E5E7EB',
-                          background: '#000000'
+                          border: "1px solid #E5E7EB",
+                          background: "#000000",
                         }}
                       />
                     ) : (
@@ -1312,82 +1708,111 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                         alt={`Slide ${index + 1} preview`}
                         style={{
                           marginTop: 8,
-                          width: '100%',
+                          width: "100%",
                           maxHeight: 130,
-                          objectFit: 'cover',
+                          objectFit: "cover",
                           borderRadius: 8,
-                          border: '1px solid #E5E7EB'
+                          border: "1px solid #E5E7EB",
                         }}
                       />
                     )
                   ) : null}
                 </div>
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13 }}>
-                    Slide Title ({language === 'en' ? 'English' : 'Kannada'})
+                  <label
+                    style={{ display: "block", marginBottom: 6, fontSize: 13 }}
+                  >
+                    Slide Title ({language === "en" ? "English" : "Kannada"})
                   </label>
                   <input
                     type="text"
-                    value={language === 'en' ? slide.title.en : slide.title.kn}
-                    onChange={(event) => handleSlideTextChange(index, 'title', event.target.value)}
+                    value={language === "en" ? slide.title.en : slide.title.kn}
+                    onChange={(event) =>
+                      handleSlideTextChange(index, "title", event.target.value)
+                    }
                     placeholder="Slide title"
                     style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #D1D5DB',
-                      borderRadius: '8px',
-                      fontSize: '14px'
+                      width: "100%",
+                      padding: "10px",
+                      border: "1px solid #D1D5DB",
+                      borderRadius: "8px",
+                      fontSize: "14px",
                     }}
                   />
                 </div>
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13 }}>
-                    Slide Description ({language === 'en' ? 'English' : 'Kannada'})
+                  <label
+                    style={{ display: "block", marginBottom: 6, fontSize: 13 }}
+                  >
+                    Slide Description (
+                    {language === "en" ? "English" : "Kannada"})
                   </label>
                   <textarea
                     rows={3}
-                    value={language === 'en' ? slide.description.en : slide.description.kn}
-                    onChange={(event) => handleSlideTextChange(index, 'description', event.target.value)}
+                    value={
+                      language === "en"
+                        ? slide.description.en
+                        : slide.description.kn
+                    }
+                    onChange={(event) =>
+                      handleSlideTextChange(
+                        index,
+                        "description",
+                        event.target.value,
+                      )
+                    }
                     placeholder="Slide description"
                     style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #D1D5DB',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      resize: 'vertical'
+                      width: "100%",
+                      padding: "10px",
+                      border: "1px solid #D1D5DB",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      resize: "vertical",
                     }}
                   />
                 </div>
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13 }}>Slide Link (optional)</label>
+                  <label
+                    style={{ display: "block", marginBottom: 6, fontSize: 13 }}
+                  >
+                    Slide Link (optional)
+                  </label>
                   <input
                     type="url"
                     value={slide.link}
-                    onChange={(event) => handleSlideChange(index, 'link', event.target.value)}
+                    onChange={(event) =>
+                      handleSlideChange(index, "link", event.target.value)
+                    }
                     placeholder="https://example.com"
                     style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #D1D5DB',
-                      borderRadius: '8px',
-                      fontSize: '14px'
+                      width: "100%",
+                      padding: "10px",
+                      border: "1px solid #D1D5DB",
+                      borderRadius: "8px",
+                      fontSize: "14px",
                     }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13 }}>Order</label>
+                  <label
+                    style={{ display: "block", marginBottom: 6, fontSize: 13 }}
+                  >
+                    Order
+                  </label>
                   <input
                     type="number"
                     value={slide.order}
-                    onChange={(event) => handleSlideChange(index, 'order', event.target.value)}
+                    onChange={(event) =>
+                      handleSlideChange(index, "order", event.target.value)
+                    }
                     min="1"
                     style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #D1D5DB',
-                      borderRadius: '8px',
-                      fontSize: '14px'
+                      width: "100%",
+                      padding: "10px",
+                      border: "1px solid #D1D5DB",
+                      borderRadius: "8px",
+                      fontSize: "14px",
                     }}
                   />
                 </div>
@@ -1396,47 +1821,67 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
           </div>
         ) : null}
 
-        {formData.type === 'block' ? (
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
-              Carousel HTML ({language === 'en' ? 'English' : 'Kannada'})
+        {formData.type === "block" ? (
+          <div style={{ marginBottom: "20px" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                fontWeight: "500",
+                color: "#374151",
+                fontSize: "14px",
+              }}
+            >
+              Carousel HTML ({language === "en" ? "English" : "Kannada"})
             </label>
             <textarea
-              name={language === 'en' ? 'blockContent_en' : 'blockContent_kn'}
-              value={language === 'en' ? formData.blockContent_en : formData.blockContent_kn}
+              name={language === "en" ? "blockContent_en" : "blockContent_kn"}
+              value={
+                language === "en"
+                  ? formData.blockContent_en
+                  : formData.blockContent_kn
+              }
               onChange={handleChange}
               rows={10}
               placeholder="Paste carousel HTML here"
               style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid #D1D5DB',
-                borderRadius: '8px',
-                fontSize: language === 'kn' ? '16px' : '14px',
-                resize: 'vertical',
-                boxSizing: 'border-box',
-                fontFamily: 'monospace'
+                width: "100%",
+                padding: "12px",
+                border: "1px solid #D1D5DB",
+                borderRadius: "8px",
+                fontSize: language === "kn" ? "16px" : "14px",
+                resize: "vertical",
+                boxSizing: "border-box",
+                fontFamily: "monospace",
               }}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-              <span style={{ fontSize: 12, color: '#6B7280' }}>
-                Tip: Include any CSS inside a &lt;style&gt; tag for the carousel.
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginTop: 8,
+              }}
+            >
+              <span style={{ fontSize: 12, color: "#6B7280" }}>
+                Tip: Include any CSS inside a &lt;style&gt; tag for the
+                carousel.
               </span>
               <button
                 type="button"
                 onClick={() =>
                   setFormData((prev) => ({
                     ...prev,
-                    [language === 'en' ? 'blockContent_en' : 'blockContent_kn']: sampleCarouselHtml
+                    [language === "en" ? "blockContent_en" : "blockContent_kn"]:
+                      sampleCarouselHtml,
                   }))
                 }
                 style={{
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  padding: '6px 12px',
-                  background: '#F9FAFB',
-                  cursor: 'pointer',
-                  fontSize: '12px'
+                  border: "1px solid #D1D5DB",
+                  borderRadius: "8px",
+                  padding: "6px 12px",
+                  background: "#F9FAFB",
+                  cursor: "pointer",
+                  fontSize: "12px",
                 }}
               >
                 Use Sample Carousel HTML
@@ -1445,16 +1890,98 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
           </div>
         ) : null}
 
+        {formData.type === "page_content" ? (
+          <div style={{ marginBottom: "20px" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                fontWeight: "500",
+                color: "#374151",
+                fontSize: "14px",
+              }}
+            >
+              Select CMS Page
+            </label>
+            {loadingPages ? (
+              <div
+                style={{ padding: "12px", color: "#6B7280", fontSize: "14px" }}
+              >
+                Loading pages...
+              </div>
+            ) : (
+              <div
+                style={{ display: "flex", gap: "12px", alignItems: "center" }}
+              >
+                <select
+                  name="pageSlug"
+                  value={formData.pageSlug || ""}
+                  onChange={handleChange}
+                  style={{
+                    flex: 1,
+                    padding: "12px",
+                    border: "1px solid #D1D5DB",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                    background: "white",
+                  }}
+                >
+                  <option value="" disabled>
+                    -- Select a page --
+                  </option>
+                  {cmsPages.map((page) => (
+                    <option key={page._id || page.slug} value={page.slug}>
+                      {page.title?.en} ({page.slug})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setShowPageEditor(true)}
+                  style={{
+                    padding: "10px 16px",
+                    border: "1px solid #2563EB",
+                    borderRadius: "8px",
+                    background: "transparent",
+                    color: "#2563EB",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Create New Page +
+                </button>
+              </div>
+            )}
+            <div style={{ marginTop: 8, fontSize: 13, color: "#6B7280" }}>
+              The content of the selected page will be displayed directly on the
+              homepage.
+            </div>
+          </div>
+        ) : null}
+
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '20px',
-            marginBottom: '20px'
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "20px",
+            marginBottom: "20px",
           }}
         >
           <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#374151', fontSize: '14px' }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "8px",
+                fontWeight: "500",
+                color: "#374151",
+                fontSize: "14px",
+              }}
+            >
               Display Order
             </label>
             <input
@@ -1464,24 +1991,24 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
               onChange={handleChange}
               min="1"
               style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid #D1D5DB',
-                borderRadius: '8px',
-                fontSize: '14px',
-                boxSizing: 'border-box'
+                width: "100%",
+                padding: "12px",
+                border: "1px solid #D1D5DB",
+                borderRadius: "8px",
+                fontSize: "14px",
+                boxSizing: "border-box",
               }}
             />
           </div>
           <div>
             <label
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                marginBottom: '8px',
-                fontWeight: '500',
-                color: '#374151',
-                fontSize: '14px'
+                display: "flex",
+                alignItems: "center",
+                marginBottom: "8px",
+                fontWeight: "500",
+                color: "#374151",
+                fontSize: "14px",
               }}
             >
               <input
@@ -1489,26 +2016,28 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                 name="active"
                 checked={formData.active}
                 onChange={handleChange}
-                style={{ marginRight: '8px' }}
+                style={{ marginRight: "8px" }}
               />
               Active
             </label>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+        <div
+          style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}
+        >
           <button
             type="button"
             onClick={onCancel}
             style={{
-              padding: '10px 24px',
-              border: '1px solid #D1D5DB',
-              borderRadius: '8px',
-              background: 'white',
-              color: '#374151',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer'
+              padding: "10px 24px",
+              border: "1px solid #D1D5DB",
+              borderRadius: "8px",
+              background: "white",
+              color: "#374151",
+              fontSize: "14px",
+              fontWeight: "500",
+              cursor: "pointer",
             }}
           >
             Cancel
@@ -1516,17 +2045,17 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
           <button
             type="submit"
             style={{
-              padding: '10px 24px',
-              border: 'none',
-              borderRadius: '8px',
-              background: 'linear-gradient(135deg, #3B82F6 0%, #10B981 100%)',
-              color: 'white',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer'
+              padding: "10px 24px",
+              border: "none",
+              borderRadius: "8px",
+              background: "linear-gradient(135deg, #3B82F6 0%, #10B981 100%)",
+              color: "white",
+              fontSize: "14px",
+              fontWeight: "500",
+              cursor: "pointer",
             }}
           >
-            {section ? 'Update Section' : 'Add Section'}
+            {section ? "Update Section" : "Add Section"}
           </button>
         </div>
       </form>
@@ -1535,64 +2064,66 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
         <div
           onClick={closeMediaPicker}
           style={{
-            position: 'fixed',
+            position: "fixed",
             inset: 0,
-            background: 'rgba(0, 0, 0, 0.45)',
+            background: "rgba(0, 0, 0, 0.45)",
             zIndex: 2200,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '24px'
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "24px",
           }}
         >
           <div
             onClick={(event) => event.stopPropagation()}
             style={{
-              width: 'min(900px, 96vw)',
-              maxHeight: '82vh',
-              overflow: 'hidden',
+              width: "min(900px, 96vw)",
+              maxHeight: "82vh",
+              overflow: "hidden",
               borderRadius: 12,
-              background: '#FFFFFF',
-              border: '1px solid #E5E7EB',
-              boxShadow: '0 20px 45px rgba(0, 0, 0, 0.25)',
-              display: 'flex',
-              flexDirection: 'column'
+              background: "#FFFFFF",
+              border: "1px solid #E5E7EB",
+              boxShadow: "0 20px 45px rgba(0, 0, 0, 0.25)",
+              display: "flex",
+              flexDirection: "column",
             }}
           >
             <div
               style={{
-                padding: '14px 16px',
-                borderBottom: '1px solid #E5E7EB',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 12
+                padding: "14px 16px",
+                borderBottom: "1px solid #E5E7EB",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
               }}
             >
               <div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: '#111827' }}>
-                  {pickerTarget?.kind === 'slide'
-                    ? 'Select Image / Video From Media Library'
-                    : 'Select Image From Media Library'}
+                <div
+                  style={{ fontSize: 16, fontWeight: 600, color: "#111827" }}
+                >
+                  {pickerTarget?.kind === "slide"
+                    ? "Select Image / Video From Media Library"
+                    : "Select Image From Media Library"}
                 </div>
-                <div style={{ fontSize: 12, color: '#6B7280' }}>
-                  {pickerTarget?.kind === 'slide'
+                <div style={{ fontSize: 12, color: "#6B7280" }}>
+                  {pickerTarget?.kind === "slide"
                     ? `Click a file to use it for slide ${pickerTarget.index + 1}.`
-                    : 'Click an image to use it for the banner.'}
+                    : "Click an image to use it for the banner."}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: "flex", gap: 8 }}>
                 <button
                   type="button"
                   onClick={() => loadPickerMedia(pickerTarget)}
                   disabled={mediaLoading}
                   style={{
-                    border: '1px solid #D1D5DB',
+                    border: "1px solid #D1D5DB",
                     borderRadius: 8,
-                    background: '#FFFFFF',
-                    color: '#374151',
+                    background: "#FFFFFF",
+                    color: "#374151",
                     fontSize: 13,
-                    cursor: mediaLoading ? 'not-allowed' : 'pointer'
+                    cursor: mediaLoading ? "not-allowed" : "pointer",
                   }}
                 >
                   Refresh
@@ -1601,35 +2132,40 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                   type="button"
                   onClick={closeMediaPicker}
                   style={{
-                    border: '1px solid #D1D5DB',
+                    border: "1px solid #D1D5DB",
                     borderRadius: 8,
-                    background: '#FFFFFF',
-                    color: '#374151',
+                    background: "#FFFFFF",
+                    color: "#374151",
                     fontSize: 13,
-                    cursor: 'pointer'
+                    cursor: "pointer",
                   }}
                 >
                   Close
                 </button>
               </div>
             </div>
-            <div style={{ padding: 16, overflow: 'auto' }}>
+            <div style={{ padding: 16, overflow: "auto" }}>
               {mediaLoading ? (
-                <div style={{ color: '#6B7280', fontSize: 14 }}>Loading media...</div>
+                <div style={{ color: "#6B7280", fontSize: 14 }}>
+                  Loading media...
+                </div>
               ) : mediaError ? (
-                <div style={{ color: '#DC2626', fontSize: 14 }}>{mediaError}</div>
+                <div style={{ color: "#DC2626", fontSize: 14 }}>
+                  {mediaError}
+                </div>
               ) : mediaItems.length === 0 ? (
-                <div style={{ color: '#6B7280', fontSize: 14 }}>
-                  {pickerTarget?.kind === 'slide'
-                    ? 'No media found. Upload image/video in `/admin/media` and retry.'
-                    : 'No images found. Upload images in `/admin/media` and retry.'}
+                <div style={{ color: "#6B7280", fontSize: 14 }}>
+                  {pickerTarget?.kind === "slide"
+                    ? "No media found. Upload image/video in `/admin/media` and retry."
+                    : "No images found. Upload images in `/admin/media` and retry."}
                 </div>
               ) : (
                 <div
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-                    gap: 12
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(auto-fill, minmax(160px, 1fr))",
+                    gap: 12,
                   }}
                 >
                   {mediaItems.map((item) => {
@@ -1641,12 +2177,14 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                         key={item.id}
                         onClick={() => handleSelectMedia(item.url)}
                         style={{
-                          border: isActive ? '2px solid #2563EB' : '1px solid #E5E7EB',
+                          border: isActive
+                            ? "2px solid #2563EB"
+                            : "1px solid #E5E7EB",
                           borderRadius: 10,
                           padding: 8,
-                          background: '#FFFFFF',
-                          cursor: 'pointer',
-                          textAlign: 'left'
+                          background: "#FFFFFF",
+                          cursor: "pointer",
+                          textAlign: "left",
                         }}
                       >
                         {isVideoMedia(item) ? (
@@ -1655,12 +2193,12 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                             muted
                             preload="metadata"
                             style={{
-                              width: '100%',
+                              width: "100%",
                               height: 100,
-                              objectFit: 'cover',
+                              objectFit: "cover",
                               borderRadius: 8,
-                              border: '1px solid #E5E7EB',
-                              background: '#000000'
+                              border: "1px solid #E5E7EB",
+                              background: "#000000",
                             }}
                           />
                         ) : (
@@ -1668,19 +2206,32 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                             src={item.thumbnail || item.url}
                             alt={item.title}
                             style={{
-                              width: '100%',
+                              width: "100%",
                               height: 100,
-                              objectFit: 'cover',
+                              objectFit: "cover",
                               borderRadius: 8,
-                              border: '1px solid #E5E7EB'
+                              border: "1px solid #E5E7EB",
                             }}
                           />
                         )}
-                        <div style={{ marginTop: 8, fontSize: 12, color: '#111827', fontWeight: 600 }}>
+                        <div
+                          style={{
+                            marginTop: 8,
+                            fontSize: 12,
+                            color: "#111827",
+                            fontWeight: 600,
+                          }}
+                        >
                           {item.title}
                         </div>
-                        <div style={{ marginTop: 2, fontSize: 11, color: '#6B7280' }}>
-                          {isVideoMedia(item) ? 'Video' : 'Image'}
+                        <div
+                          style={{
+                            marginTop: 2,
+                            fontSize: 11,
+                            color: "#6B7280",
+                          }}
+                        >
+                          {isVideoMedia(item) ? "Video" : "Image"}
                         </div>
                       </button>
                     );
