@@ -7,9 +7,10 @@ import {
   listMedia,
   listPages,
   createPage,
+  updatePage,
 } from "../api/resources.js";
-import { AddEditPageForm } from "./PagesPage.jsx";
 import { usePermissions } from "../utils/rolePermissions.js";
+import Editor from "@monaco-editor/react";
 
 const sectionTypes = [
   { value: "hero_text", label: "Hero Top Text" },
@@ -831,69 +832,31 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
   const [pickerTarget, setPickerTarget] = useState(null);
   const [cmsPages, setCmsPages] = useState([]);
   const [loadingPages, setLoadingPages] = useState(false);
-  const [showPageEditor, setShowPageEditor] = useState(false);
   const { isAdmin, isSuperAdmin } = usePermissions();
   const canReview = isAdmin || isSuperAdmin;
-  const [pageNotification, setPageNotification] = useState({
-    show: false,
-    type: "",
-    message: "",
-  });
 
-  const showPageNotification = (type, message) => {
-    setPageNotification({ show: true, type, message });
-    setTimeout(() => {
-      setPageNotification({ show: false, type: "", message: "" });
-    }, 3000);
-  };
-
-  const handleSaveNewPage = async (pageData) => {
-    try {
-      const restrictedRoutes = ["/", "/home"];
-      if (restrictedRoutes.includes(pageData.slug?.toLowerCase().trim())) {
-        showPageNotification("error", 'Routes "/" and "/home" are reserved.');
-        return;
-      }
-      const pagePayload = {
-        title: { en: pageData.title_en, kn: pageData.title_kn },
-        slug: pageData.slug,
-        redirect_url: pageData.redirect_url,
-        css: pageData.css || "",
-        content: {
-          en: {
-            html: pageData.content_en.html || "",
-            javascript: pageData.content_en.javascript || "",
-          },
-          kn: {
-            html: pageData.content_kn.html || "",
-            javascript: pageData.content_kn.javascript || "",
-          },
-        },
-        status: canReview ? pageData.status || "pending" : "pending",
-        tags: Array.isArray(pageData.tags)
-          ? pageData.tags.filter((tag) => String(tag || "").trim())
-          : [],
-        announcement: null,
-      };
-
-      await createPage(pagePayload);
-      showPageNotification("success", "Page created successfully!");
-      setFormData((prev) => ({ ...prev, pageSlug: pagePayload.slug }));
-
-      listPages().then((pages) => {
-        if (Array.isArray(pages))
-          setCmsPages(
-            pages.filter(
-              (p) => p.status === "Approved" || p.slug === pagePayload.slug,
-            ),
-          );
-      });
-      setShowPageEditor(false);
-    } catch (error) {
-      console.error("Error saving page:", error);
-      showPageNotification("error", "Failed to save page. Please try again.");
+  useEffect(() => {
+    // Determine if we should fetch the actual page content when editing an existing section
+    if (section && section.type === "page_content" && section.pageSlug) {
+      setLoadingPages(true);
+      listPages()
+        .then((pages) => {
+          if (Array.isArray(pages)) {
+            setCmsPages(pages);
+            const p = pages.find((pg) => pg.slug === section.pageSlug);
+            if (p) {
+              setFormData((prev) => ({
+                ...prev,
+                blockContent_en: p.content?.en?.html || "",
+                blockContent_kn: p.content?.kn?.html || "",
+              }));
+            }
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoadingPages(false));
     }
-  };
+  }, [section]);
 
   useEffect(() => {
     // Only load pages if type is page_content or trying to switch to it
@@ -1034,7 +997,7 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
     });
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     const cleanString = (value) => {
       if (typeof value !== "string") return "";
@@ -1105,50 +1068,48 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
     }
 
     if (formData.type === "page_content") {
-      const pageSlug = cleanString(formData.pageSlug);
-      if (!pageSlug) {
-        alert("Please select a CMS page.");
+      try {
+        if (section && section.pageSlug) {
+          // Update the background CMS page
+          const p = cmsPages.find((pg) => pg.slug === section.pageSlug);
+          if (p) {
+            await updatePage(p._id, {
+              title: { en: formData.title_en, kn: formData.title_kn },
+              content: {
+                en: { html: formData.blockContent_en || "", javascript: "" },
+                kn: { html: formData.blockContent_kn || "", javascript: "" },
+              },
+            });
+            payload.pageSlug = section.pageSlug;
+          } else {
+            payload.pageSlug = section.pageSlug; // fallback
+          }
+        } else {
+          // Auto-create a CMS page to store this content
+          const autoSlug = `home-section-${Date.now()}`;
+          await createPage({
+            title: {
+              en: formData.title_en || "Home Section",
+              kn: formData.title_kn || "ಹೋಮ್ ವಿಭಾಗ",
+            },
+            slug: autoSlug,
+            status: "approved",
+            content: {
+              en: { html: formData.blockContent_en || "", javascript: "" },
+              kn: { html: formData.blockContent_kn || "", javascript: "" },
+            },
+          });
+          payload.pageSlug = autoSlug;
+        }
+      } catch (err) {
+        console.error("Error managing backend page.", err);
+        alert("Failed to save the content. Please try again.");
         return;
       }
-      payload.pageSlug = pageSlug;
     }
 
     onSave(payload);
   };
-
-  if (showPageEditor) {
-    return (
-      <div style={{ padding: "0" }}>
-        {pageNotification.show && (
-          <div
-            className="notification"
-            style={{
-              position: "fixed",
-              top: "80px",
-              right: "20px",
-              zIndex: 3000,
-              background:
-                pageNotification.type === "success" ? "#10B981" : "#EF4444",
-              color: "white",
-              padding: "12px 20px",
-              borderRadius: "8px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-            }}
-          >
-            {pageNotification.message}
-          </div>
-        )}
-        <AddEditPageForm
-          onSave={handleSaveNewPage}
-          onCancel={() => setShowPageEditor(false)}
-          showNotification={showPageNotification}
-          editingPage={null}
-          canReview={canReview}
-          forceAnnouncement={false}
-        />
-      </div>
-    );
-  }
 
   return (
     <div
@@ -1901,65 +1862,45 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                 fontSize: "14px",
               }}
             >
-              Select CMS Page
+              Page Content (Code Editor -{" "}
+              {language === "en" ? "English" : "Kannada"})
             </label>
-            {loadingPages ? (
-              <div
-                style={{ padding: "12px", color: "#6B7280", fontSize: "14px" }}
-              >
-                Loading pages...
-              </div>
-            ) : (
-              <div
-                style={{ display: "flex", gap: "12px", alignItems: "center" }}
-              >
-                <select
-                  name="pageSlug"
-                  value={formData.pageSlug || ""}
-                  onChange={handleChange}
-                  style={{
-                    flex: 1,
-                    padding: "12px",
-                    border: "1px solid #D1D5DB",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    boxSizing: "border-box",
-                    background: "white",
-                  }}
-                >
-                  <option value="" disabled>
-                    -- Select a page --
-                  </option>
-                  {cmsPages.map((page) => (
-                    <option key={page._id || page.slug} value={page.slug}>
-                      {page.title?.en} ({page.slug})
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setShowPageEditor(true)}
-                  style={{
-                    padding: "10px 16px",
-                    border: "1px solid #2563EB",
-                    borderRadius: "8px",
-                    background: "transparent",
-                    color: "#2563EB",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Create New Page +
-                </button>
-              </div>
-            )}
+            <div
+              style={{
+                border: "1px solid #D1D5DB",
+                borderRadius: "8px",
+                overflow: "hidden",
+              }}
+            >
+              <Editor
+                height="400px"
+                language="html"
+                theme="vs-dark"
+                value={
+                  language === "en"
+                    ? formData.blockContent_en
+                    : formData.blockContent_kn
+                }
+                onChange={(val) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    [language === "en" ? "blockContent_en" : "blockContent_kn"]:
+                      val || "",
+                  }));
+                }}
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  fontFamily: "'Noto Sans', 'Noto Sans Kannada', sans-serif",
+                  lineNumbers: "on",
+                  wordWrap: "on",
+                  tabSize: 2,
+                }}
+              />
+            </div>
             <div style={{ marginTop: 8, fontSize: 13, color: "#6B7280" }}>
-              The content of the selected page will be displayed directly on the
-              homepage.
+              Just like the pages creation, you can write rich HTML, CSS, and JS
+              inline.
             </div>
           </div>
         ) : null}
