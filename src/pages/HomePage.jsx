@@ -21,13 +21,42 @@ function joinApiUrl(base, path) {
 }
 
 function resolveMediaUrl(rawUrl) {
-  let url = String(rawUrl || "").trim();
+  let url = String(rawUrl || "")
+    .trim()
+    .replace(/\\/g, "/");
   if (!url) return "";
   url = url
     .replace(/^\/?api\/uploads\//i, "/uploads/")
     .replace(/^(https?:\/\/[^/]+)\/api\/uploads\//i, "$1/uploads/")
     .replace(/^(\/\/[^/]+)\/api\/uploads\//i, "$1/uploads/");
-  if (/^(?:https?:)?\/\//i.test(url)) return url;
+
+  const normalizedApiBase = String(API_BASE || "")
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/api$/i, "");
+
+  if (/^(?:https?:)?\/\//i.test(url)) {
+    const absolute = url.startsWith("//")
+      ? `${window.location.protocol}${url}`
+      : url;
+    try {
+      const parsed = new URL(absolute);
+      const path = `${parsed.pathname || ""}${parsed.search || ""}${parsed.hash || ""}`;
+      if (
+        normalizedApiBase &&
+        /^(localhost|127\.0\.0\.1)$/i.test(parsed.hostname)
+      ) {
+        return `${normalizedApiBase}${path}`.replace(/([^:]\/)\/+/g, "$1");
+      }
+      if (/^\/api\/uploads\//i.test(parsed.pathname || "")) {
+        return `${parsed.origin}${path.replace(/^\/api\/uploads\//i, "/uploads/")}`;
+      }
+    } catch (_error) {
+      // keep absolute value
+    }
+    return absolute;
+  }
+
   if (/^(?:data|blob):/i.test(url)) return url;
   return joinApiUrl(API_BASE, url);
 }

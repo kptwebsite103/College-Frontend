@@ -291,7 +291,9 @@ export default function MediaPage() {
   };
 
   const resolveMediaUrl = (rawUrl) => {
-    let url = String(rawUrl || "").trim();
+    let url = String(rawUrl || "")
+      .trim()
+      .replace(/\\/g, "/");
     if (!url) return "";
 
     // Normalize historical "/api/uploads/*" values into "/uploads/*".
@@ -300,8 +302,37 @@ export default function MediaPage() {
       .replace(/^(https?:\/\/[^/]+)\/api\/uploads\//i, "$1/uploads/")
       .replace(/^(\/\/[^/]+)\/api\/uploads\//i, "$1/uploads/");
 
-    if (/^https?:\/\//i.test(url)) return url;
-    if (url.startsWith("//")) return `${window.location.protocol}${url}`;
+    const normalizedApiBase = String(API_BASE || "")
+      .trim()
+      .replace(/\/+$/, "")
+      .replace(/\/api$/i, "");
+
+    if (/^https?:\/\//i.test(url) || url.startsWith("//")) {
+      const absolute = url.startsWith("//")
+        ? `${window.location.protocol}${url}`
+        : url;
+      try {
+        const parsed = new URL(absolute);
+        const path = `${parsed.pathname || ""}${parsed.search || ""}${parsed.hash || ""}`;
+
+        // Migrate old localhost-stored media URLs to current API host.
+        if (
+          normalizedApiBase &&
+          /^(localhost|127\.0\.0\.1)$/i.test(parsed.hostname)
+        ) {
+          return `${normalizedApiBase}${path}`.replace(/([^:]\/)\/+/g, "$1");
+        }
+
+        // Normalize absolute ".../api/uploads/*" to ".../uploads/*"
+        if (/^\/api\/uploads\//i.test(parsed.pathname || "")) {
+          return `${parsed.origin}${path.replace(/^\/api\/uploads\//i, "/uploads/")}`;
+        }
+      } catch (_error) {
+        // fall through and use absolute string
+      }
+      return absolute;
+    }
+
     if (/^(?:data|blob):/i.test(url)) return url;
 
     const base = String(API_BASE || window.location.origin || "")
