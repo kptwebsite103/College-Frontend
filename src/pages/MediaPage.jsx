@@ -204,11 +204,43 @@ export default function MediaPage() {
 
   function normalizeMediaItem(item) {
     if (!item) return null;
+    const rawType = String(
+      item.type || item.metadata?.mimetype || item.mimeType || item.format || "",
+    ).toLowerCase();
+    let normalizedType = rawType;
+    if (rawType.startsWith("image/")) normalizedType = "image";
+    else if (rawType.startsWith("video/")) normalizedType = "video";
+    else if (rawType.startsWith("audio/")) normalizedType = "audio";
+    else if (rawType === "application/pdf" || rawType === "pdf")
+      normalizedType = "pdf";
+    else if (
+      ["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg", "avif"].includes(
+        rawType,
+      )
+    )
+      normalizedType = "image";
+    else if (
+      ["mp4", "webm", "ogg", "mov", "m4v", "avi", "mkv"].includes(rawType)
+    )
+      normalizedType = "video";
+    else if (
+      [
+        "doc",
+        "docx",
+        "xls",
+        "xlsx",
+        "ppt",
+        "pptx",
+        "txt",
+        "csv",
+        "document",
+      ].includes(rawType)
+    )
+      normalizedType = "document";
+
     return {
       id: item._id || item.id,
-      type:
-        item.type ||
-        (item.format && item.format.includes("pdf") ? "pdf" : "document"),
+      type: normalizedType || "document",
       title: item.title || "",
       name: item.filename || item.name || item.originalFilename || "Untitled",
       url: item.url || item.secure_url || "",
@@ -259,14 +291,28 @@ export default function MediaPage() {
   };
 
   const resolveMediaUrl = (rawUrl) => {
-    if (!rawUrl) return "";
-    if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
-    if (rawUrl.startsWith("//")) return `${window.location.protocol}${rawUrl}`;
+    let url = String(rawUrl || "").trim();
+    if (!url) return "";
 
-    const base = API_BASE || window.location.origin;
-    const safeBase = base.endsWith("/") ? base.slice(0, -1) : base;
-    const safePath = rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`;
-    return `${safeBase}${safePath}`;
+    // Normalize historical "/api/uploads/*" values into "/uploads/*".
+    url = url
+      .replace(/^\/?api\/uploads\//i, "/uploads/")
+      .replace(/^(https?:\/\/[^/]+)\/api\/uploads\//i, "$1/uploads/")
+      .replace(/^(\/\/[^/]+)\/api\/uploads\//i, "$1/uploads/");
+
+    if (/^https?:\/\//i.test(url)) return url;
+    if (url.startsWith("//")) return `${window.location.protocol}${url}`;
+    if (/^(?:data|blob):/i.test(url)) return url;
+
+    const base = String(API_BASE || window.location.origin || "")
+      .trim()
+      .replace(/\/+$/, "");
+    const safePath = url.startsWith("/") ? url : `/${url}`;
+    const baseForUploads = safePath.startsWith("/uploads/")
+      ? base.replace(/\/api$/i, "")
+      : base;
+
+    return `${baseForUploads}${safePath}`;
   };
 
   const stopItemEvent = (event) => {
