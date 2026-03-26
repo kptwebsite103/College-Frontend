@@ -485,7 +485,6 @@ export default function PagesPage() {
                       background: "white",
                       borderRadius: "12px",
                       padding: "16px",
-                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
                       border: "1px solid #E5E7EB",
                       outline:
                         highlightedId === page._id
