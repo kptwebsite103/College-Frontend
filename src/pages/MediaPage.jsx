@@ -12,6 +12,7 @@ import "./UserManagementContent.css";
 export default function MediaPage() {
   const { t } = useTranslation();
   const isMounted = useRef(true);
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
   const [mediaItems, setMediaItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -63,7 +64,7 @@ export default function MediaPage() {
     } catch (error) {
       console.error("Failed to load media items:", error);
       if (isMounted.current) {
-        setUploadError("Failed to load media from Cloudinary.");
+        setUploadError("Failed to load media files.");
         setMediaItems([]);
       }
     } finally {
@@ -257,10 +258,138 @@ export default function MediaPage() {
     return item.name || "";
   };
 
+  const resolveMediaUrl = (rawUrl) => {
+    if (!rawUrl) return "";
+    if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
+    if (rawUrl.startsWith("//")) return `${window.location.protocol}${rawUrl}`;
+
+    const base = API_BASE || window.location.origin;
+    const safeBase = base.endsWith("/") ? base.slice(0, -1) : base;
+    const safePath = rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`;
+    return `${safeBase}${safePath}`;
+  };
+
+  const stopItemEvent = (event) => {
+    event.stopPropagation();
+  };
+
+  const openMediaInNewTab = (event, item) => {
+    if (event) event.stopPropagation();
+    const mediaUrl = resolveMediaUrl(item?.url);
+    if (!mediaUrl) return;
+    window.open(mediaUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const getFileExtension = (item) => {
+    const source = String(item?.name || item?.url || "");
+    const clean = source.split("?")[0].split("#")[0];
+    const parts = clean.split(".");
+    if (parts.length < 2) return "";
+    return parts.pop().toLowerCase();
+  };
+
+  const isPdfItem = (item) =>
+    item?.type === "pdf" || /\.pdf(?:$|\?)/i.test(String(item?.url || ""));
+
+  const renderMediaPreview = (item, { height = 100, compact = false } = {}) => {
+    const displayName = getDisplayName(item);
+    const mediaUrl = resolveMediaUrl(item?.url);
+    const previewUrl = resolveMediaUrl(item?.thumbnail || item?.url);
+    const radius = compact ? "8px" : "6px";
+
+    if (item?.type === "image" && previewUrl) {
+      return (
+        <img
+          src={previewUrl}
+          alt={displayName}
+          loading="lazy"
+          style={{
+            width: "100%",
+            height: `${height}px`,
+            objectFit: "cover",
+            borderRadius: radius,
+            display: "block",
+          }}
+        />
+      );
+    }
+
+    if (item?.type === "video" && mediaUrl) {
+      return (
+        <video
+          src={mediaUrl}
+          preload="metadata"
+          muted
+          playsInline
+          style={{
+            width: "100%",
+            height: `${height}px`,
+            objectFit: "cover",
+            borderRadius: radius,
+            display: "block",
+            background: "#111827",
+          }}
+        />
+      );
+    }
+
+    if (isPdfItem(item)) {
+      return (
+        <div
+          style={{
+            width: "100%",
+            height: `${height}px`,
+            borderRadius: radius,
+            background:
+              "linear-gradient(135deg, rgba(239,68,68,0.16), rgba(255,255,255,1))",
+            border: "1px solid #FCA5A5",
+            color: "#B91C1C",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: 700,
+            fontSize: compact ? "11px" : "12px",
+            letterSpacing: "0.4px",
+          }}
+        >
+          PDF
+        </div>
+      );
+    }
+
+    return (
+      <div
+        style={{
+          width: "100%",
+          height: `${height}px`,
+          background: "#F3F4F6",
+          borderRadius: radius,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          gap: "6px",
+          border: "1px dashed #D1D5DB",
+          color: "#6B7280",
+        }}
+      >
+        {getFileIcon(item?.type, compact ? 18 : 28)}
+        <span style={{ fontSize: compact ? "10px" : "11px", fontWeight: "600" }}>
+          {(getFileExtension(item) || "file").toUpperCase()}
+        </span>
+      </div>
+    );
+  };
+
   const filteredItems = useMemo(() => {
     if (!mediaItems || !Array.isArray(mediaItems)) return [];
     return mediaItems.filter((item) => {
-      const matchesFilter = filter === "all" || item.type === filter;
+      const mediaType = String(item.type || "").toLowerCase();
+      const isDocumentLike = ["document", "pdf", "file"].includes(mediaType);
+      const matchesFilter =
+        filter === "all" ||
+        mediaType === filter ||
+        (filter === "document" && isDocumentLike);
       const haystack = `${item.name || ""} ${item.title || ""}`.toLowerCase();
       const matchesSearch = haystack.includes(searchTerm.toLowerCase());
       return matchesFilter && matchesSearch;
@@ -336,6 +465,8 @@ export default function MediaPage() {
           </svg>
         );
       case "document":
+      case "pdf":
+      case "file":
         return (
           <svg
             width={size}
@@ -349,6 +480,21 @@ export default function MediaPage() {
             <polyline points="14,2 14,9 20,9" />
             <line x1="16" y1="13" x2="8" y2="13" />
             <line x1="16" y1="17" x2="8" y2="17" />
+          </svg>
+        );
+      case "audio":
+        return (
+          <svg
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M9 18V5l12-2v13" />
+            <circle cx="6" cy="18" r="3" />
+            <circle cx="18" cy="16" r="3" />
           </svg>
         );
       default:
@@ -374,7 +520,12 @@ export default function MediaPage() {
       case "video":
         return "#D97706";
       case "document":
+      case "file":
         return "#1D4ED8";
+      case "pdf":
+        return "#B91C1C";
+      case "audio":
+        return "#7C3AED";
       default:
         return "#374151";
     }
@@ -781,6 +932,7 @@ export default function MediaPage() {
               <div
                 key={item.id}
                 className={`user-card ${viewMode === "list" ? "list-view" : ""}`}
+                onClick={(event) => openMediaInNewTab(event, item)}
                 style={{ cursor: "pointer" }}
               >
                 {viewMode === "grid" ? (
@@ -790,6 +942,7 @@ export default function MediaPage() {
                     <input
                       type="checkbox"
                       checked={selectedItems.has(item.id)}
+                      onClick={stopItemEvent}
                       onChange={() => toggleItemSelection(item.id)}
                       style={{
                         position: "absolute",
@@ -832,8 +985,8 @@ export default function MediaPage() {
                       >
                         <button
                           className="edit-btn"
-                          title="Download"
-                          onClick={() => window.open(item.url, "_blank")}
+                          title="Open"
+                          onClick={(event) => openMediaInNewTab(event, item)}
                           style={{
                             background: "transparent",
                             border: "none",
@@ -849,13 +1002,16 @@ export default function MediaPage() {
                         >
                           <img
                             src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'%3E%3C/path%3E%3Cpolyline points='7 10 12 15 17 10'%3E%3C/polyline%3E%3Cline x1='12' y1='15' x2='12' y2='3'%3E%3C/line%3E%3C/svg%3E"
-                            alt="Download"
+                            alt="Open"
                           />
                         </button>
                         <button
                           className="edit-btn"
                           title="Edit Title"
-                          onClick={() => handleEditTitle(item)}
+                          onClick={(event) => {
+                            stopItemEvent(event);
+                            handleEditTitle(item);
+                          }}
                           style={{
                             background: "transparent",
                             border: "none",
@@ -877,7 +1033,8 @@ export default function MediaPage() {
                         <button
                           className="delete-btn"
                           title="Delete"
-                          onClick={() => {
+                          onClick={(event) => {
+                            stopItemEvent(event);
                             if (
                               window.confirm(
                                 `Delete "${getDisplayName(item)}"?`,
@@ -907,47 +1064,9 @@ export default function MediaPage() {
                       </div>
                     </div>
 
-                    {/* Thumbnail or icon for documents */}
-                    {item.type !== "document" && item.thumbnail ? (
-                      <img
-                        src={item.thumbnail}
-                        alt={getDisplayName(item)}
-                        onClick={() => window.open(item.url)}
-                        style={{
-                          width: "100%",
-                          height: "100px",
-                          objectFit: "cover",
-                          borderRadius: "4px",
-                          marginBottom: "6px",
-                          cursor: "pointer",
-                        }}
-                      />
-                    ) : item.type === "document" ? (
-                      <div
-                        onClick={() => window.open(item.url)}
-                        style={{
-                          width: "100%",
-                          height: "100px",
-                          background: "#F3F4F6",
-                          borderRadius: "4px",
-                          marginBottom: "6px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          border: "2px dashed #D1D5DB",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <svg
-                          width="40"
-                          height="40"
-                          viewBox="0 0 24 24"
-                          fill="#6B7280"
-                        >
-                          <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V9L14,2M18,20H6V9H18M16,13V8H8V13H16M10,9H8V11H10M14,9H12V11H14M16,9H14V11H16" />
-                        </svg>
-                      </div>
-                    ) : null}
+                    <div style={{ marginBottom: "6px" }}>
+                      {renderMediaPreview(item, { height: 100 })}
+                    </div>
 
                     {/* File info */}
                     <div style={{ padding: "0 6px" }}>
@@ -1009,6 +1128,7 @@ export default function MediaPage() {
                     <input
                       type="checkbox"
                       checked={selectedItems.has(item.id)}
+                      onClick={stopItemEvent}
                       onChange={() => toggleItemSelection(item.id)}
                       style={{
                         width: "16px",
@@ -1036,6 +1156,16 @@ export default function MediaPage() {
                       }}
                     >
                       {getFileIcon(item.type, 20)}
+                    </div>
+
+                    <div
+                      style={{
+                        width: "86px",
+                        marginRight: "12px",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {renderMediaPreview(item, { height: 48, compact: true })}
                     </div>
 
                     {/* File info */}
@@ -1078,8 +1208,8 @@ export default function MediaPage() {
                     >
                       <button
                         className="edit-btn"
-                        title="Download"
-                        onClick={() => window.open(item.url, "_blank")}
+                        title="Open"
+                        onClick={(event) => openMediaInNewTab(event, item)}
                         style={{
                           background: "transparent",
                           border: "none",
@@ -1095,13 +1225,16 @@ export default function MediaPage() {
                       >
                         <img
                           src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'%3E%3C/path%3E%3Cpolyline points='7 10 12 15 17 10'%3E%3C/polyline%3E%3Cline x1='12' y1='15' x2='12' y2='3'%3E%3C/line%3E%3C/svg%3E"
-                          alt="Download"
+                          alt="Open"
                         />
                       </button>
                       <button
                         className="edit-btn"
                         title="Edit Title"
-                        onClick={() => handleEditTitle(item)}
+                        onClick={(event) => {
+                          stopItemEvent(event);
+                          handleEditTitle(item);
+                        }}
                         style={{
                           background: "transparent",
                           border: "none",
@@ -1123,7 +1256,8 @@ export default function MediaPage() {
                       <button
                         className="delete-btn"
                         title="Delete"
-                        onClick={() => {
+                        onClick={(event) => {
+                          stopItemEvent(event);
                           if (
                             window.confirm(`Delete "${getDisplayName(item)}"?`)
                           ) {
