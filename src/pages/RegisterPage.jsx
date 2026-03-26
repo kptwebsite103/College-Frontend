@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+
+function joinUrl(base, path) {
+  if (!base) return path;
+  if (/^https?:\/\//i.test(path)) return path;
+  const b = base.endsWith('/') ? base.slice(0, -1) : base;
+  const p = path.startsWith('/') ? path : `/${path}`;
+  return `${b}${p}`;
+}
+
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,7 +28,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
     try {
-      const res = await fetch('/api/auth/register', {
+      const res = await fetch(joinUrl(API_BASE, '/api/auth/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: email, password, firstName, lastName })

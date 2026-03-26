@@ -2,6 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { usePermissions } from '../utils/rolePermissions';
 import { getRoleDisplayName, getAssignableRoles, canManageUser } from '../utils/rolePermissions';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+
+function joinUrl(base, path) {
+  if (!base) return path;
+  if (/^https?:\/\//i.test(path)) return path;
+  const b = base.endsWith('/') ? base.slice(0, -1) : base;
+  const p = path.startsWith('/') ? path : `/${path}`;
+  return `${b}${p}`;
+}
+
+function getAuthToken() {
+  return (
+    localStorage.getItem('kpt_access_token') ||
+    localStorage.getItem('accessToken') ||
+    ''
+  );
+}
+
 export default function UserManagement() {
   const { currentUser, permissions, highestRole } = usePermissions();
   const [users, setUsers] = useState([]);
@@ -32,9 +50,9 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/users', {
+      const response = await fetch(joinUrl(API_BASE, '/api/users'), {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         }
       });
       
@@ -58,11 +76,11 @@ export default function UserManagement() {
       const url = editingUser ? `/api/users/${editingUser.id}` : '/api/users';
       const method = editingUser ? 'PUT' : 'POST';
       
-      const response = await fetch(url, {
+      const response = await fetch(joinUrl(API_BASE, url), {
         method,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         },
         body: JSON.stringify(formData)
       });
@@ -117,10 +135,10 @@ export default function UserManagement() {
     }
 
     try {
-      const response = await fetch(`/api/users/${user.id}`, {
+      const response = await fetch(joinUrl(API_BASE, `/api/users/${user.id}`), {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         }
       });
 

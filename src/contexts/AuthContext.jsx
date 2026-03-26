@@ -2,6 +2,51 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext();
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const ACCESS_TOKEN_KEY = 'kpt_access_token';
+const REFRESH_TOKEN_KEY = 'kpt_refresh_token';
+const LEGACY_ACCESS_TOKEN_KEY = 'accessToken';
+const LEGACY_REFRESH_TOKEN_KEY = 'refreshToken';
+
+function joinUrl(base, path) {
+  if (!base) return path;
+  if (/^https?:\/\//i.test(path)) return path;
+  const b = base.endsWith('/') ? base.slice(0, -1) : base;
+  const p = path.startsWith('/') ? path : `/${path}`;
+  return `${b}${p}`;
+}
+
+function getStoredAccessToken() {
+  return (
+    localStorage.getItem(ACCESS_TOKEN_KEY) ||
+    localStorage.getItem(LEGACY_ACCESS_TOKEN_KEY)
+  );
+}
+
+function getStoredRefreshToken() {
+  return (
+    localStorage.getItem(REFRESH_TOKEN_KEY) ||
+    localStorage.getItem(LEGACY_REFRESH_TOKEN_KEY)
+  );
+}
+
+function setStoredTokens(accessToken, refreshToken) {
+  if (accessToken) {
+    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+    localStorage.setItem(LEGACY_ACCESS_TOKEN_KEY, accessToken);
+  }
+  if (refreshToken) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    localStorage.setItem(LEGACY_REFRESH_TOKEN_KEY, refreshToken);
+  }
+}
+
+function clearStoredTokens() {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
+}
 
 function decodeJwt(token) {
   try {
@@ -32,8 +77,8 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const token = localStorage.getItem('accessToken');
-        const refreshToken = localStorage.getItem('refreshToken');
+        const token = getStoredAccessToken();
+        const refreshToken = getStoredRefreshToken();
         
         if (token) {
           const decoded = decodeJwt(token);
@@ -60,19 +105,17 @@ export const AuthProvider = ({ children }) => {
             const refreshResult = await refreshAccessToken(refreshToken);
             if (!refreshResult.success) {
               // Refresh failed, clear tokens
-              localStorage.removeItem('accessToken');
-              localStorage.removeItem('refreshToken');
+              clearStoredTokens();
             }
           } else {
             // No refresh token, clear expired access token
-            localStorage.removeItem('accessToken');
+            clearStoredTokens();
           }
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
         // Clear potentially corrupted tokens
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
+        clearStoredTokens();
       }
       setIsLoaded(true);
     };
@@ -82,7 +125,7 @@ export const AuthProvider = ({ children }) => {
 
   const refreshAccessToken = async (refreshToken) => {
     try {
-      const res = await fetch('/api/auth/refresh', {
+      const res = await fetch(joinUrl(API_BASE, '/api/auth/refresh'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken })
@@ -95,8 +138,7 @@ export const AuthProvider = ({ children }) => {
       const data = await res.json();
       
       if (data.accessToken) {
-        localStorage.setItem('accessToken', data.accessToken);
-        if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+        setStoredTokens(data.accessToken, data.refreshToken);
         
         const decoded = decodeJwt(data.accessToken);
         const userId = decoded.userId || decoded.sub;
@@ -122,7 +164,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, email, password) => {
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(joinUrl(API_BASE, '/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, password })
@@ -133,8 +175,7 @@ export const AuthProvider = ({ children }) => {
       }
       const data = await res.json();
       if (data.accessToken) {
-        localStorage.setItem('accessToken', data.accessToken);
-        if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
+        setStoredTokens(data.accessToken, data.refreshToken);
         const decoded = decodeJwt(data.accessToken);
         const userId = decoded.userId || decoded.sub;
         setAccessToken(data.accessToken);
@@ -159,10 +200,12 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }).catch(() => {});
+      await fetch(joinUrl(API_BASE, '/api/auth/logout'), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }).catch(() => {});
     } catch (e) {}
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    clearStoredTokens();
     setAccessToken(null);
     setIsSignedIn(false);
     setCurrentUser(null);
