@@ -5,6 +5,24 @@ import {
 } from "../api/resources.js";
 import { useLanguage } from "../contexts/LanguageContext.jsx";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+
+function joinApiUrl(base, path) {
+  if (!base) return path;
+  if (/^https?:\/\//i.test(path)) return path;
+  const b = base.endsWith("/") ? base.slice(0, -1) : base;
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return `${b}${p}`;
+}
+
+function resolveMediaUrl(rawUrl) {
+  const url = String(rawUrl || "").trim();
+  if (!url) return "";
+  if (/^(?:https?:)?\/\//i.test(url)) return url;
+  if (/^(?:data|blob):/i.test(url)) return url;
+  return joinApiUrl(API_BASE, url);
+}
+
 function getLocalizedValue(value, language) {
   if (!value) return "";
   if (typeof value === "string") return value;
@@ -163,7 +181,7 @@ function HeroCarousel({ slides = [], language = "en", heroText = null }) {
             const description = getLocalizedValue(slide.description, language);
             const hasCaption =
               hasHeroOverlay || Boolean(title || description || slide.link);
-            const mediaUrl = slide.image || "";
+            const mediaUrl = resolveMediaUrl(slide.image || "");
             const videoSlide = isVideoUrl(mediaUrl);
             return (
               <div
@@ -174,12 +192,12 @@ function HeroCarousel({ slides = [], language = "en", heroText = null }) {
                   height: "100%",
                   display: "flex",
                   alignItems: "center",
-                  background: slide.image
+                  background: mediaUrl
                     ? "#0f172a"
                     : "linear-gradient(120deg, #1d4ed8, #0f172a)",
                 }}
               >
-                {slide.image ? (
+                {mediaUrl ? (
                   videoSlide ? (
                     <video
                       src={mediaUrl}
@@ -200,7 +218,7 @@ function HeroCarousel({ slides = [], language = "en", heroText = null }) {
                     />
                   ) : (
                     <img
-                      src={slide.image}
+                      src={mediaUrl}
                       alt={title || `Slide ${slideIndex + 1}`}
                       style={{
                         position: "absolute",
@@ -590,12 +608,13 @@ const HomePage = () => {
         section.bannerDescription,
         currentLanguage,
       );
+      const bannerImage = resolveMediaUrl(section.bannerImage || "");
       return (
         <section key={section._id} style={{ marginBottom: 32 }}>
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: section.bannerImage
+              gridTemplateColumns: bannerImage
                 ? "minmax(0, 1fr) minmax(0, 1fr)"
                 : "1fr",
               gap: 24,
@@ -628,9 +647,9 @@ const HomePage = () => {
                 </a>
               ) : null}
             </div>
-            {section.bannerImage ? (
+            {bannerImage ? (
               <img
-                src={section.bannerImage}
+                src={bannerImage}
                 alt={title || "Hero banner"}
                 style={{
                   width: "100%",

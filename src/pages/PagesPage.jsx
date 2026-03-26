@@ -825,14 +825,18 @@ export function AddEditPageForm({
         },
       });
 
-      // Initialize single file content for editors
+      // Initialize single file content for editors.
+      // Pass the persisted CSS explicitly so it is not lost by stale state.
+      const sharedCss = editingPage.css || "";
       const enSingleContent = buildSingleFileContent(
         editingPage.content?.en?.html || "",
         editingPage.content?.en?.javascript || "",
+        sharedCss,
       );
       const knSingleContent = buildSingleFileContent(
         editingPage.content?.kn?.html || "",
         editingPage.content?.kn?.javascript || "",
+        sharedCss,
       );
 
       setEnSingleFileContent(enSingleContent);
@@ -1063,18 +1067,26 @@ export function AddEditPageForm({
 
   // Parse single file content into HTML and JS (CSS extracted separately)
   const parseSingleFileContent = (content) => {
-    // Extract CSS from <style> tags
-    const styleMatch = content.match(/<style>([\s\S]*?)<\/style>/);
-    const extractedCss = styleMatch ? styleMatch[1] : "";
+    const source = String(content || "");
+    const styleMatches = [
+      ...source.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi),
+    ];
+    const scriptMatches = [
+      ...source.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi),
+    ];
 
-    // Extract JavaScript from <script> tags
-    const scriptMatch = content.match(/<script>([\s\S]*?)<\/script>/);
-    const extractedJs = scriptMatch ? scriptMatch[1] : "";
+    const extractedCss = styleMatches
+      .map((match) => match[1] || "")
+      .join("\n\n")
+      .trim();
+    const extractedJs = scriptMatches
+      .map((match) => match[1] || "")
+      .join("\n\n")
+      .trim();
 
-    // Extract HTML (everything outside style and script tags)
-    let extractedHtml = content
-      .replace(/<style>[\s\S]*?<\/style>/g, "")
-      .replace(/<script>[\s\S]*?<\/script>/g, "")
+    const extractedHtml = source
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
       .trim();
 
     return {

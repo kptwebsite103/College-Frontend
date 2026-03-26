@@ -12,6 +12,24 @@ import {
 import { usePermissions } from "../utils/rolePermissions.js";
 import Editor from "@monaco-editor/react";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+
+function joinApiUrl(base, path) {
+  if (!base) return path;
+  if (/^https?:\/\//i.test(path)) return path;
+  const b = base.endsWith("/") ? base.slice(0, -1) : base;
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return `${b}${p}`;
+}
+
+function resolveMediaUrl(rawUrl) {
+  const url = String(rawUrl || "").trim();
+  if (!url) return "";
+  if (/^(?:https?:)?\/\//i.test(url)) return url;
+  if (/^(?:data|blob):/i.test(url)) return url;
+  return joinApiUrl(API_BASE, url);
+}
+
 const sectionTypes = [
   { value: "hero_text", label: "Hero Top Text" },
   { value: "slider", label: "Hero Carousel (Slides)" },
@@ -153,7 +171,7 @@ function getTitle(section) {
 
 function normalizeMediaEntry(item) {
   if (!item) return null;
-  const url = item.url || item.secure_url || "";
+  const url = resolveMediaUrl(item.url || item.secure_url || "");
   if (!url) return null;
   return {
     id: item._id || item.id || url,
@@ -164,8 +182,9 @@ function normalizeMediaEntry(item) {
       item.name ||
       "Untitled",
     type: String(item.type || "").toLowerCase(),
+    mimetype: String(item.metadata?.mimetype || item.mimeType || "").toLowerCase(),
     url,
-    thumbnail: item.thumbnailUrl || item.thumbnail || url,
+    thumbnail: resolveMediaUrl(item.thumbnailUrl || item.thumbnail || url),
     createdAt: item.createdAt || "",
   };
 }
@@ -173,12 +192,16 @@ function normalizeMediaEntry(item) {
 function isImageMedia(item) {
   if (!item?.url) return false;
   if (item.type === "image") return true;
+  if (String(item.mimetype || "").startsWith("image/")) return true;
+  if (String(item.type || "").startsWith("image/")) return true;
   return /\.(avif|bmp|gif|jpe?g|png|svg|webp)(\?|#|$)/i.test(item.url);
 }
 
 function isVideoMedia(item) {
   if (!item?.url) return false;
   if (item.type === "video") return true;
+  if (String(item.mimetype || "").startsWith("video/")) return true;
+  if (String(item.type || "").startsWith("video/")) return true;
   return (
     /\/video\/upload\//i.test(item.url) ||
     /\.(mp4|webm|ogg|mov|m4v|avi|mkv)(\?|#|$)/i.test(item.url)
@@ -788,7 +811,7 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
     heroDescription_kn: section?.heroDescription?.kn || "",
     heroHeadingSize: section?.heroHeadingSize || 42,
     heroTextAlign: section?.heroTextAlign || "center",
-    bannerImage: section?.bannerImage || "",
+    bannerImage: resolveMediaUrl(section?.bannerImage || ""),
     bannerDescription_en: section?.bannerDescription?.en || "",
     bannerDescription_kn: section?.bannerDescription?.kn || "",
     bannerLink: section?.bannerLink || "",
@@ -804,7 +827,7 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
     slides:
       Array.isArray(section?.slides) && section.slides.length > 0
         ? section.slides.map((slide, idx) => ({
-            image: slide.image || "",
+            image: resolveMediaUrl(slide.image || ""),
             link: slide.link || "",
             order: slide.order || idx + 1,
             title: {
