@@ -17,14 +17,22 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 function joinApiUrl(base, path) {
   if (!base) return path;
   if (/^https?:\/\//i.test(path)) return path;
+  const normalizedPath = String(path || "").trim();
   const b = base.endsWith("/") ? base.slice(0, -1) : base;
+  const baseForUploads = /^\/?api\/uploads\//i.test(normalizedPath)
+    ? b.replace(/\/api$/i, "")
+    : b;
   const p = path.startsWith("/") ? path : `/${path}`;
-  return `${b}${p}`;
+  return `${baseForUploads}${p}`;
 }
 
 function resolveMediaUrl(rawUrl) {
-  const url = String(rawUrl || "").trim();
+  let url = String(rawUrl || "").trim();
   if (!url) return "";
+  url = url
+    .replace(/^\/?api\/uploads\//i, "/uploads/")
+    .replace(/^(https?:\/\/[^/]+)\/api\/uploads\//i, "$1/uploads/")
+    .replace(/^(\/\/[^/]+)\/api\/uploads\//i, "$1/uploads/");
   if (/^(?:https?:)?\/\//i.test(url)) return url;
   if (/^(?:data|blob):/i.test(url)) return url;
   return joinApiUrl(API_BASE, url);
@@ -171,7 +179,7 @@ function getTitle(section) {
 
 function normalizeMediaEntry(item) {
   if (!item) return null;
-  const url = resolveMediaUrl(item.url || item.secure_url || "");
+  const url = String(item.url || item.secure_url || "").trim();
   if (!url) return null;
   return {
     id: item._id || item.id || url,
@@ -184,7 +192,7 @@ function normalizeMediaEntry(item) {
     type: String(item.type || "").toLowerCase(),
     mimetype: String(item.metadata?.mimetype || item.mimeType || "").toLowerCase(),
     url,
-    thumbnail: resolveMediaUrl(item.thumbnailUrl || item.thumbnail || url),
+    thumbnail: String(item.thumbnailUrl || item.thumbnail || url).trim(),
     createdAt: item.createdAt || "",
   };
 }
@@ -811,7 +819,7 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
     heroDescription_kn: section?.heroDescription?.kn || "",
     heroHeadingSize: section?.heroHeadingSize || 42,
     heroTextAlign: section?.heroTextAlign || "center",
-    bannerImage: resolveMediaUrl(section?.bannerImage || ""),
+    bannerImage: section?.bannerImage || "",
     bannerDescription_en: section?.bannerDescription?.en || "",
     bannerDescription_kn: section?.bannerDescription?.kn || "",
     bannerLink: section?.bannerLink || "",
@@ -827,7 +835,7 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
     slides:
       Array.isArray(section?.slides) && section.slides.length > 0
         ? section.slides.map((slide, idx) => ({
-            image: resolveMediaUrl(slide.image || ""),
+            image: slide.image || "",
             link: slide.link || "",
             order: slide.order || idx + 1,
             title: {
@@ -1486,7 +1494,7 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
               {formData.bannerImage ? (
                 <div style={{ marginTop: 10 }}>
                   <img
-                    src={formData.bannerImage}
+                    src={resolveMediaUrl(formData.bannerImage)}
                     alt="Banner preview"
                     style={{
                       width: "100%",
@@ -1672,7 +1680,7 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                   {slide.image ? (
                     isVideoUrl(slide.image) ? (
                       <video
-                        src={slide.image}
+                        src={resolveMediaUrl(slide.image)}
                         muted
                         controls
                         preload="metadata"
@@ -1688,7 +1696,7 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                       />
                     ) : (
                       <img
-                        src={slide.image}
+                        src={resolveMediaUrl(slide.image)}
                         alt={`Slide ${index + 1} preview`}
                         style={{
                           marginTop: 8,
@@ -2134,7 +2142,9 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                 >
                   {mediaItems.map((item) => {
                     const currentValue = getCurrentPickerValue();
-                    const isActive = currentValue && currentValue === item.url;
+                    const isActive =
+                      currentValue &&
+                      resolveMediaUrl(currentValue) === resolveMediaUrl(item.url);
                     return (
                       <button
                         type="button"
@@ -2153,7 +2163,7 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                       >
                         {isVideoMedia(item) ? (
                           <video
-                            src={item.url}
+                            src={resolveMediaUrl(item.url)}
                             muted
                             preload="metadata"
                             style={{
@@ -2167,7 +2177,7 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                           />
                         ) : (
                           <img
-                            src={item.thumbnail || item.url}
+                            src={resolveMediaUrl(item.thumbnail || item.url)}
                             alt={item.title}
                             style={{
                               width: "100%",

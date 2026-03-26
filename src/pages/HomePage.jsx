@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  getPageBySlug,
   listActiveHomeSections,
   listPublicAnnouncements,
 } from "../api/resources.js";
@@ -10,14 +11,22 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 function joinApiUrl(base, path) {
   if (!base) return path;
   if (/^https?:\/\//i.test(path)) return path;
+  const normalizedPath = String(path || "").trim();
   const b = base.endsWith("/") ? base.slice(0, -1) : base;
+  const baseForUploads = /^\/?api\/uploads\//i.test(normalizedPath)
+    ? b.replace(/\/api$/i, "")
+    : b;
   const p = path.startsWith("/") ? path : `/${path}`;
-  return `${b}${p}`;
+  return `${baseForUploads}${p}`;
 }
 
 function resolveMediaUrl(rawUrl) {
-  const url = String(rawUrl || "").trim();
+  let url = String(rawUrl || "").trim();
   if (!url) return "";
+  url = url
+    .replace(/^\/?api\/uploads\//i, "/uploads/")
+    .replace(/^(https?:\/\/[^/]+)\/api\/uploads\//i, "$1/uploads/")
+    .replace(/^(\/\/[^/]+)\/api\/uploads\//i, "$1/uploads/");
   if (/^(?:https?:)?\/\//i.test(url)) return url;
   if (/^(?:data|blob):/i.test(url)) return url;
   return joinApiUrl(API_BASE, url);
@@ -542,6 +551,51 @@ function AnnouncementsSection({ announcements = [], language = "en" }) {
   );
 }
 
+function PageContentSection({ section, language }) {
+  const slug = String(section?.pageSlug || "").trim();
+  const [pageData, setPageData] = React.useState(null);
+
+  React.useEffect(() => {
+    let alive = true;
+
+    if (!slug) {
+      setPageData(null);
+      return () => {
+        alive = false;
+      };
+    }
+
+    getPageBySlug(slug)
+      .then((page) => {
+        if (!alive) return;
+        setPageData(page || null);
+      })
+      .catch((error) => {
+        if (!alive) return;
+        console.error(`Failed to load page content for slug "${slug}":`, error);
+        setPageData(null);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [slug]);
+
+  const htmlFromPage = getLocalizedValue(pageData?.content, language)?.html || "";
+  const htmlFallback = getLocalizedValue(section?.blockContent, language) || "";
+  const htmlContent = htmlFromPage || htmlFallback;
+
+  if (!htmlContent) return null;
+
+  return (
+    <section
+      key={section._id || section.id || slug}
+      style={{ marginBottom: 32 }}
+      dangerouslySetInnerHTML={{ __html: htmlContent }}
+    />
+  );
+}
+
 const HomePage = () => {
   const { currentLanguage } = useLanguage();
   const [sections, setSections] = React.useState([]);
@@ -675,6 +729,16 @@ const HomePage = () => {
           key={section._id}
           style={{ marginBottom: 32 }}
           dangerouslySetInnerHTML={{ __html: htmlContent }}
+        />
+      );
+    }
+
+    if (section.type === "page_content") {
+      return (
+        <PageContentSection
+          key={section._id || section.id || section.pageSlug}
+          section={section}
+          language={currentLanguage}
         />
       );
     }
