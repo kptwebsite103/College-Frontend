@@ -98,7 +98,10 @@ export function getPageById(pageId) {
 }
 
 export function listMenus() {
-  return apiRequest("/api/menus");
+  return apiRequest("/api/menus").then((data) => {
+    if (Array.isArray(data)) return data;
+    throw new Error("Invalid response for /api/menus: expected an array");
+  });
 }
 
 export function createMenu(menuData) {

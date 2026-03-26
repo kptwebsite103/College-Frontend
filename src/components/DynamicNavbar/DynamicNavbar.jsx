@@ -124,7 +124,7 @@ const DynamicNavbar = () => {
 
       // Always try API first for consistent data across all users
       const res = await listMenus();
-      const apiMenus = res || []; // API returns array directly, not res.data
+      const apiMenus = Array.isArray(res) ? res : [];
 
       console.log("📦 API returned", apiMenus.length, "menus");
       console.log("📋 Raw menu data:", apiMenus);
@@ -236,6 +236,7 @@ const DynamicNavbar = () => {
 
   // Build hierarchical menu structure from flat menu list
   const buildMenuHierarchy = (menus) => {
+    const safeMenus = Array.isArray(menus) ? menus : [];
     console.log("🏗️ Building menu hierarchy from", menus.length, "menus");
 
     // Recursive function to build nested structure
@@ -259,7 +260,7 @@ const DynamicNavbar = () => {
         }));
     };
 
-    const topLevelMenus = menus.filter(
+    const topLevelMenus = safeMenus.filter(
       (menu) =>
         !menu.parent_id &&
         menu.status === "Approved" &&
@@ -270,7 +271,7 @@ const DynamicNavbar = () => {
       "🎯 Top-level approved menus:",
       topLevelMenus.length,
       "out of",
-      menus.length,
+      safeMenus.length,
     );
 
     const hierarchical = topLevelMenus
