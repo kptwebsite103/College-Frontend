@@ -2393,7 +2393,7 @@ export function AddEditPageForm({
               </label>
               <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
                 <input
-                  type="url"
+                  type="text"
                   name="announcement_attachment_url"
                   value={formData.announcement_attachment_url}
                   onChange={handleChange}

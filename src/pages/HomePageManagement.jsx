@@ -1485,7 +1485,7 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
               </label>
               <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
                 <input
-                  type="url"
+                  type="text"
                   name="bannerImage"
                   value={formData.bannerImage}
                   onChange={handleChange}
@@ -1586,7 +1586,7 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                 Banner Link (optional)
               </label>
               <input
-                type="url"
+                type="text"
                 name="bannerLink"
                 value={formData.bannerLink}
                 onChange={handleChange}
@@ -1675,7 +1675,7 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                   </label>
                   <div style={{ display: "flex", gap: 8 }}>
                     <input
-                      type="url"
+                      type="text"
                       value={slide.image}
                       onChange={(event) =>
                         handleSlideChange(index, "image", event.target.value)
@@ -1800,7 +1800,7 @@ function AddEditSectionForm({ section, sectionTypes, onSave, onCancel }) {
                     Slide Link (optional)
                   </label>
                   <input
-                    type="url"
+                    type="text"
                     value={slide.link}
                     onChange={(event) =>
                       handleSlideChange(index, "link", event.target.value)
