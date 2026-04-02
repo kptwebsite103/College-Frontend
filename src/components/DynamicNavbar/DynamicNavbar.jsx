@@ -509,12 +509,6 @@ const DynamicNavbar = () => {
                 padding: "8px 16px",
                 height: "44px",
               }}
-              onMouseEnter={(e) => {
-                e.target.style.background = "rgba(255, 255, 255, 0.15)";
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = "transparent";
-              }}
             >
               <svg
                 width="24"

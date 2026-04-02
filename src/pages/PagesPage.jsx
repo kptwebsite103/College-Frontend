@@ -242,7 +242,9 @@ export default function PagesPage() {
       );
 
       // Transform form data to match database schema
-      const finalStatus = canReview ? pageData.status || "pending" : "pending";
+      const finalStatus = canReview
+        ? pageData.status || "approved"
+        : "pending";
       const pagePayload = {
         title: {
           en: pageData.title_en,
@@ -765,7 +767,7 @@ export function AddEditPageForm({
     title_en: "",
     title_kn: "",
     slug: "",
-    status: "pending",
+    status: canReview ? "approved" : "pending",
     tags: forceAnnouncement ? ["announcement"] : [],
     announcement_text_en: "",
     announcement_text_kn: "",
@@ -851,7 +853,7 @@ export function AddEditPageForm({
         title_en: "",
         title_kn: "",
         slug: "",
-        status: "pending",
+        status: canReview ? "approved" : "pending",
         tags: forceAnnouncement ? ["announcement"] : [],
         announcement_text_en: "",
         announcement_text_kn: "",
@@ -878,7 +880,7 @@ export function AddEditPageForm({
 
       setFormOpen(false);
     }
-  }, [editingPage, formOpen, forceAnnouncement]);
+  }, [editingPage, formOpen, forceAnnouncement, canReview]);
   const [language, setLanguage] = useState("en");
 
   // Separate state for English editor

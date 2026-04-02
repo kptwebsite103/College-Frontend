@@ -3,6 +3,20 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { listMenus, getPageBySlug } from '../api/resources.js';
 import { useLanguage } from '../contexts/LanguageContext';
 
+function getLocalePageContent(content, locale) {
+  const value = content && typeof content === 'object' ? content[locale] : null;
+  if (typeof value === 'string') {
+    return { html: value, javascript: '' };
+  }
+  if (value && typeof value === 'object') {
+    return {
+      html: typeof value.html === 'string' ? value.html : '',
+      javascript: typeof value.javascript === 'string' ? value.javascript : '',
+    };
+  }
+  return { html: '', javascript: '' };
+}
+
 export default function DynamicPage() {
   const { route, parentRoute, childRoute, grandChildRoute } = useParams();
   const navigate = useNavigate();
@@ -154,6 +168,14 @@ export default function DynamicPage() {
     );
   }
 
+  const localizedContent = getLocalePageContent(pageData?.content, currentLanguage);
+  const englishContent = getLocalePageContent(pageData?.content, 'en');
+  const pageHtml =
+    localizedContent.html ||
+    englishContent.html ||
+    '<p>No content available for this page.</p>';
+  const pageJavascript = localizedContent.javascript || englishContent.javascript;
+
   return (
     <div style={{
       padding: '0',
@@ -195,7 +217,7 @@ export default function DynamicPage() {
                 position: 'relative'
               }}
               dangerouslySetInnerHTML={{
-                __html: pageData.content?.[currentLanguage]?.html || pageData.content?.en?.html || '<p>No content available for this page.</p>'
+                __html: pageHtml
               }} 
             />
             
@@ -205,9 +227,9 @@ export default function DynamicPage() {
             )}
             
             {/* Render custom JavaScript */}
-            {pageData.content?.[currentLanguage]?.javascript && (
+            {pageJavascript && (
               <script dangerouslySetInnerHTML={{
-                __html: pageData.content[currentLanguage].javascript
+                __html: pageJavascript
               }} />
             )}
             

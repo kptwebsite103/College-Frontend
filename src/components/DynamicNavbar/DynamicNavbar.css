@@ -12,6 +12,7 @@
   transition: background 0.3s ease;
   width: 100%;
   font-family: var(--app-font-family);
+  --navbar-hover-color: #2563eb;
 }
 
 .navbar-container {
@@ -77,7 +78,7 @@
   text-decoration: none;
   font-weight: 500;
   font-size: 14px;
-  transition: all 0.2s ease;
+  transition: color 0.22s ease, transform 0.22s ease;
   border: none;
   background: none;
   cursor: pointer;
@@ -111,18 +112,6 @@
   align-items: center;
   gap: 8px;
   padding: 8px 16px !important;
-}
-
-.nav-link:hover {
-  background-color: rgba(255, 255, 255, 0.15);
-  color: white !important;
-  text-decoration: none;
-}
-
-.nav-link--dropdown:hover {
-  background-color: rgba(255, 255, 255, 0.15);
-  color: white !important;
-  text-decoration: none;
 }
 
 .nav-link--nested {
@@ -262,17 +251,72 @@
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transform: translateY(10px);
-  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  transform: translateY(-10px) scaleY(0.82);
+  transform-origin: top center;
+  transition: opacity 0.24s ease, transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0.24s;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   z-index: 6000;
 }
 
 .dropdown.is-open {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(0) scaleY(1);
   visibility: visible;
   pointer-events: auto;
+}
+
+@media (min-width: 961px) {
+  .nav-item.has-dropdown:hover > .dropdown.main-dropdown,
+  .has-nested:hover > .nested-dropdown {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0) scaleY(1);
+  }
+
+  .nav-item.has-dropdown:hover > .dropdown.main-dropdown > li,
+  .has-nested:hover > .nested-dropdown > li {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown > li,
+.nested-dropdown > li {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.18s ease, transform 0.24s ease;
+}
+
+.dropdown.is-open > li,
+.nested-dropdown.is-open > li {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.dropdown.is-open > li:nth-child(1),
+.nested-dropdown.is-open > li:nth-child(1) {
+  transition-delay: 20ms;
+}
+
+.dropdown.is-open > li:nth-child(2),
+.nested-dropdown.is-open > li:nth-child(2) {
+  transition-delay: 40ms;
+}
+
+.dropdown.is-open > li:nth-child(3),
+.nested-dropdown.is-open > li:nth-child(3) {
+  transition-delay: 60ms;
+}
+
+.dropdown.is-open > li:nth-child(4),
+.nested-dropdown.is-open > li:nth-child(4) {
+  transition-delay: 80ms;
+}
+
+.dropdown.is-open > li:nth-child(5),
+.nested-dropdown.is-open > li:nth-child(5) {
+  transition-delay: 100ms;
 }
 
 /* Nested Dropdown Styles */
@@ -286,8 +330,9 @@
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transform: translateY(10px);
-  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  transform: translateY(-10px) scaleY(0.82);
+  transform-origin: top center;
+  transition: opacity 0.24s ease, transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0.24s;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   z-index: 6001;
 }
@@ -296,7 +341,7 @@
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transform: translateY(0);
+  transform: translateY(0) scaleY(1);
 }
 
 .dropdown.main-dropdown {
@@ -333,8 +378,8 @@
 }
 
 .nav-item[aria-expanded="true"] > .nav-link {
-  background: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
+  background: transparent;
+  color: var(--navbar-hover-color);
   border: none !important;
 }
 
@@ -359,8 +404,8 @@
 }
 
 .dropdown .nav-link:hover, .dropdown .nav-link:focus-visible {
-  background: rgba(255, 255, 255, 0.10);
-  color: #ffffff;
+  background: transparent;
+  color: var(--navbar-hover-color);
   text-decoration: none;
 }
 
@@ -430,7 +475,14 @@
 .nav-item[aria-expanded="true"] > .nav-link:hover,
 .nav-link--dropdown:hover,
 .nav-link--parent:hover {
-  background-color: rgba(255, 255, 255, 0.15) !important;
-  color: white !important;
+  background-color: transparent !important;
+  color: var(--navbar-hover-color) !important;
   text-decoration: none !important;
+}
+
+.nav-link:focus-visible,
+.nav-link--dropdown:focus-visible,
+.nav-link--nested:focus-visible {
+  background-color: transparent !important;
+  color: var(--navbar-hover-color) !important;
 }
