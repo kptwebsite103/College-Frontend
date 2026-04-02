@@ -12,7 +12,7 @@
   transition: background 0.3s ease;
   width: 100%;
   font-family: var(--app-font-family);
-  --navbar-hover-color: #3d7eb5;
+  --navbar-hover-color: #44ACFF;
 }
 
 .navbar-container {
