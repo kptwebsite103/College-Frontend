@@ -369,11 +369,11 @@ export default function PagesPage() {
             color: "#1F2937",
           }}
         >
-          {announcementMode ? "Announcements" : "Pages"}
+          {announcementMode ? "Notices" : "Pages"}
         </h1>
         <p style={{ margin: "8px 0 0", color: "#6B7280", fontSize: "14px" }}>
           {announcementMode
-            ? "Create and manage announcement items shown on the homepage."
+            ? "Create and manage notices shown in the homepage notice board."
             : "Manage your website pages"}
         </p>
       </div>
@@ -436,7 +436,7 @@ export default function PagesPage() {
                   }}
                 >
                   {announcementMode
-                    ? "No announcements created yet"
+                    ? "No notices created yet"
                     : "No pages created yet"}
                 </div>
                 <div
@@ -447,7 +447,7 @@ export default function PagesPage() {
                   }}
                 >
                   {announcementMode
-                    ? "Create your first announcement to show updates on the homepage."
+                    ? "Create your first notice to show updates on the homepage."
                     : "Create your first page to get started with your website content management."}
                 </div>
                 <button
@@ -465,7 +465,7 @@ export default function PagesPage() {
                   }}
                 >
                   {announcementMode
-                    ? "Create First Announcement"
+                    ? "Create First Notice"
                     : "Create Your First Page"}
                 </button>
               </div>
@@ -2100,7 +2100,7 @@ export function AddEditPageForm({
                   fontSize: "14px",
                 }}
               >
-                Title (English)
+                {showAnnouncementFields ? "Notice Name (English)" : "Title (English)"}
               </label>
               <input
                 type="text"
@@ -2129,7 +2129,7 @@ export function AddEditPageForm({
                 }}
               >
                 {showAnnouncementFields
-                  ? "Announcement Text (English)"
+                  ? "Notice Text (English)"
                   : "Content (English)"}
               </label>
               {showAnnouncementFields ? (
@@ -2138,7 +2138,7 @@ export function AddEditPageForm({
                   value={formData.announcement_text_en}
                   onChange={handleChange}
                   rows={8}
-                  placeholder="Enter announcement text in English"
+                  placeholder="Enter notice text in English"
                   style={{
                     width: "100%",
                     padding: "12px",
@@ -2167,7 +2167,7 @@ export function AddEditPageForm({
                   fontSize: "14px",
                 }}
               >
-                Title (Kannada)
+                {showAnnouncementFields ? "Notice Name (Kannada)" : "Title (Kannada)"}
               </label>
               <input
                 type="text"
@@ -2197,7 +2197,7 @@ export function AddEditPageForm({
                 }}
               >
                 {showAnnouncementFields
-                  ? "Announcement Text (Kannada)"
+                  ? "Notice Text (Kannada)"
                   : "Content (Kannada)"}
               </label>
               {showAnnouncementFields ? (
@@ -2206,7 +2206,7 @@ export function AddEditPageForm({
                   value={formData.announcement_text_kn}
                   onChange={handleChange}
                   rows={8}
-                  placeholder="Enter announcement text in Kannada"
+                  placeholder="Enter notice text in Kannada"
                   style={{
                     width: "100%",
                     padding: "12px",
@@ -2389,7 +2389,7 @@ export function AddEditPageForm({
                   fontSize: "14px",
                 }}
               >
-                Attachable (optional)
+                Redirect Link Or File (optional)
               </label>
               <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
                 <input
@@ -2397,7 +2397,7 @@ export function AddEditPageForm({
                   name="announcement_attachment_url"
                   value={formData.announcement_attachment_url}
                   onChange={handleChange}
-                  placeholder="https://example.com/file"
+                  placeholder="https://example.com or /uploads/file.pdf"
                   style={{
                     flex: 1,
                     minWidth: 0,
@@ -2449,7 +2449,7 @@ export function AddEditPageForm({
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Open selected attachment
+                    Open linked resource
                   </a>
                 </div>
               ) : null}
@@ -2476,7 +2476,7 @@ export function AddEditPageForm({
               }
               disabled={forceAnnouncement}
             />
-            Show this item in homepage announcements
+            Show this item in homepage notice board
           </label>
           {forceAnnouncement ? (
             <div style={{ marginTop: 6, fontSize: 12, color: "#6B7280" }}>
@@ -2568,7 +2568,7 @@ export function AddEditPageForm({
                 >
                   {previewImageTarget
                     ? "Select Image From Media"
-                    : "Select Attachable From Media"}
+                    : "Select File From Media"}
                 </div>
                 {previewImageTarget?.currentSrc ? (
                   <div

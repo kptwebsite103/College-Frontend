@@ -3,6 +3,7 @@ import {
   getPageBySlug,
   listActiveHomeSections,
   listPublicAnnouncements,
+  getTheme,
 } from "../api/resources.js";
 import { useLanguage } from "../contexts/LanguageContext.jsx";
 
@@ -76,15 +77,22 @@ function stripHtml(html = "") {
     .trim();
 }
 
-function formatDateLabel(dateValue) {
-  if (!dateValue) return "";
-  const parsed = new Date(dateValue);
-  if (Number.isNaN(parsed.getTime())) return "";
-  return parsed.toLocaleDateString(undefined, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+function resolveNoticeLink(rawLink = "") {
+  const link = String(rawLink || "").trim();
+  if (!link) return "";
+  if (/^(?:data|blob):/i.test(link)) return link;
+  if (/^(?:https?:)?\/\//i.test(link)) {
+    return link.startsWith("//") ? `${window.location.protocol}${link}` : link;
+  }
+  if (/^\/?api\/uploads\//i.test(link) || /^\/uploads\//i.test(link)) {
+    return resolveMediaUrl(link);
+  }
+  if (link.startsWith("/")) return link;
+  return `/${link}`;
+}
+
+function isExternalLink(url = "") {
+  return /^https?:\/\//i.test(String(url || "").trim());
 }
 
 function isVideoUrl(url = "") {
@@ -412,167 +420,173 @@ function HeroCarousel({ slides = [], language = "en", heroText = null }) {
   );
 }
 
-function AnnouncementsSection({ announcements = [], language = "en" }) {
+function NoticesSection({
+  announcements = [],
+  language = "en",
+  navbarColors = { color1: "#1d4ed8", color2: "#0ea5e9" },
+}) {
   if (!Array.isArray(announcements) || announcements.length === 0) return null;
 
-  const announcementItems = announcements
+  const now = new Date();
+  const noticeItems = announcements
     .map((page) => {
+      const startDate = page?.announcement?.startDate
+        ? new Date(page.announcement.startDate)
+        : null;
+      const endDate = page?.announcement?.endDate
+        ? new Date(page.announcement.endDate)
+        : null;
+
+      if (startDate && !Number.isNaN(startDate.getTime())) {
+        startDate.setHours(0, 0, 0, 0);
+        if (startDate > now) return null;
+      }
+      if (endDate && !Number.isNaN(endDate.getTime())) {
+        endDate.setHours(23, 59, 59, 999);
+        if (endDate < now) return null;
+      }
+
+      const title = getLocalizedValue(page?.title, language);
       const text = getAnnouncementText(page, language);
-      if (!text) return null;
-      const fromDate = formatDateLabel(
-        page?.announcement?.startDate || page?.createdAt,
-      );
-      const toDate = formatDateLabel(page?.announcement?.endDate);
-      const dateLabel = toDate ? `${fromDate} to ${toDate}` : fromDate;
-      const attachmentUrl = page?.announcement?.attachmentUrl || "";
-      const attachmentLabel =
-        page?.announcement?.attachmentLabel || "Attachment";
-      const startDateRaw = page?.announcement?.startDate || page?.createdAt;
-      const endDateRaw = page?.announcement?.endDate || startDateRaw;
+      if (!title && !text) return null;
+
+      const linkRaw =
+        page?.announcement?.linkUrl ||
+        page?.announcement?.attachmentUrl ||
+        page?.redirect_url ||
+        "";
+      const linkLabel =
+        page?.announcement?.linkLabel ||
+        page?.announcement?.attachmentLabel ||
+        "Open";
 
       return {
         id: page?._id || page?.slug || text,
-        text,
-        dateLabel,
-        attachmentUrl,
-        attachmentLabel,
-        startDateRaw,
-        endDateRaw,
+        title: title || text,
+        summary: title ? text : "",
+        link: resolveNoticeLink(linkRaw),
+        linkLabel,
       };
     })
     .filter(Boolean);
 
-  if (announcementItems.length === 0) return null;
-
-  let displayItems = announcementItems;
-
-  if (announcementItems.length > 1) {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(todayStart);
-    todayEnd.setHours(23, 59, 59, 999);
-
-    const countToday = announcementItems.filter((item) => {
-      const startDate = new Date(item.startDateRaw);
-      const endDate = new Date(item.endDateRaw);
-      if (Number.isNaN(startDate.getTime())) return false;
-      if (Number.isNaN(endDate.getTime())) return false;
-      const normalizedStart = new Date(startDate);
-      normalizedStart.setHours(0, 0, 0, 0);
-      const normalizedEnd = new Date(endDate);
-      normalizedEnd.setHours(23, 59, 59, 999);
-      return normalizedStart <= todayEnd && normalizedEnd >= todayStart;
-    }).length;
-
-    const summaryDateLabel = formatDateLabel(todayStart);
-    const summaryCount = countToday > 0 ? countToday : announcementItems.length;
-    const summaryText =
-      countToday > 0
-        ? `${summaryCount} announcement${summaryCount === 1 ? "" : "s"} on ${summaryDateLabel}`
-        : `${summaryCount} announcement${summaryCount === 1 ? "" : "s"} available`;
-
-    displayItems = [
-      {
-        id: "announcement-summary",
-        text: summaryText,
-        dateLabel: "",
-        attachmentUrl: "",
-        attachmentLabel: "",
-      },
-    ];
-  }
-
-  const tickerItems = displayItems;
+  if (noticeItems.length === 0) return null;
+  const importantLinks = noticeItems.filter((item) => item.link);
+  const cardHeaderStyle = {
+    color: "#FFFFFF",
+    fontWeight: 700,
+    fontSize: 24,
+    textAlign: "center",
+    padding: "16px 18px",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    background: `linear-gradient(135deg, ${navbarColors.color1} 0%, ${navbarColors.color2} 100%)`,
+  };
 
   return (
-    <section style={{ marginBottom: 20 }}>
-      <style>{`
-        @keyframes announcementTicker {
-          from { transform: translateX(0); }
-          to { transform: translateX(-100%); }
-        }
-      `}</style>
+    <section style={{ marginBottom: 26 }}>
       <div
         style={{
-          display: "flex",
-          alignItems: "center",
-          minHeight: 44,
-          borderTop: "1px solid #E5E7EB",
-          borderBottom: "1px solid #E5E7EB",
-          background: "#FFFFFF",
+          background: "#CBD5E1",
+          borderRadius: 18,
+          padding: 18,
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+          gap: 16,
         }}
       >
-        <div
-          style={{
-            minWidth: 142,
-            padding: "10px 12px",
-            fontSize: 13,
-            fontWeight: 700,
-            color: "#FFFFFF",
-            background: "#111827",
-            textTransform: "uppercase",
-            letterSpacing: "0.04em",
-          }}
-        >
-          Announcements
-        </div>
-        <div style={{ flex: 1, overflow: "hidden", whiteSpace: "nowrap" }}>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              minWidth: "max-content",
-              paddingLeft: "100%",
-              willChange: "transform",
-              animation: `announcementTicker ${Math.max(20, tickerItems.length * 10)}s linear infinite`,
-            }}
-          >
-            {tickerItems.map((item, index) => (
-              <span
-                key={`${item.id}-${index}`}
+        <div style={{ borderRadius: 16, overflow: "hidden", background: "#FFFFFF" }}>
+          <div style={cardHeaderStyle}>Notice Board</div>
+          <div style={{ maxHeight: 340, overflowY: "auto" }}>
+            {noticeItems.map((item, index) => (
+              <div
+                key={`${item.id || "notice"}-${index}`}
                 style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: 0,
-                  marginRight: 120,
-                  fontSize: 14,
-                  color: "#1F2937",
+                  borderBottom: index < noticeItems.length - 1 ? "1px solid #D1D5DB" : "none",
+                  padding: "12px 16px",
+                  background: "#FFFFFF",
                 }}
               >
-                <span>{item.text}</span>
-                {item.dateLabel ? (
-                  <span style={{ color: "#6B7280", fontSize: 12 }}>
-                    ({item.dateLabel})
-                  </span>
-                ) : null}
-                {item.attachmentUrl ? (
-                  <a
-                    href={item.attachmentUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{
-                      color: "#2563EB",
-                      fontWeight: 600,
-                      textDecoration: "none",
-                    }}
-                  >
-                    {item.attachmentLabel}
-                  </a>
-                ) : null}
-                {tickerItems.length > 1 && index < tickerItems.length - 1 ? (
-                  <span
-                    style={{
-                      color: "#9CA3AF",
-                      marginLeft: 24,
-                      marginRight: 24,
-                    }}
-                  >
-                    |
-                  </span>
-                ) : null}
-              </span>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ minWidth: 0 }}>
+                    {item.link ? (
+                      <a
+                        href={item.link}
+                        target={isExternalLink(item.link) ? "_blank" : undefined}
+                        rel={isExternalLink(item.link) ? "noreferrer" : undefined}
+                        style={{
+                          fontWeight: 600,
+                          color: "#0F172A",
+                          textDecoration: "none",
+                          display: "inline-block",
+                        }}
+                      >
+                        {item.title}
+                      </a>
+                    ) : (
+                      <span style={{ fontWeight: 600, color: "#0F172A" }}>
+                        {item.title}
+                      </span>
+                    )}
+                    {item.summary ? (
+                      <div style={{ marginTop: 4, color: "#4B5563", fontSize: 13 }}>
+                        {item.summary}
+                      </div>
+                    ) : null}
+                  </div>
+                  {item.link ? (
+                    <a
+                      href={item.link}
+                      target={isExternalLink(item.link) ? "_blank" : undefined}
+                      rel={isExternalLink(item.link) ? "noreferrer" : undefined}
+                      style={{
+                        color: "#2563EB",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        textDecoration: "none",
+                        whiteSpace: "nowrap",
+                        alignSelf: "center",
+                      }}
+                    >
+                      {item.linkLabel}
+                    </a>
+                  ) : null}
+                </div>
+              </div>
             ))}
+          </div>
+        </div>
+
+        <div style={{ borderRadius: 16, overflow: "hidden", background: "#FFFFFF" }}>
+          <div style={cardHeaderStyle}>Important Links</div>
+          <div style={{ maxHeight: 340, overflowY: "auto" }}>
+            {importantLinks.length === 0 ? (
+              <div style={{ padding: 16, color: "#6B7280", fontSize: 14 }}>
+                No important links added yet.
+              </div>
+            ) : (
+              importantLinks.map((item, index) => (
+                <a
+                  key={`${item.id || "link"}-${index}`}
+                  href={item.link}
+                  target={isExternalLink(item.link) ? "_blank" : undefined}
+                  rel={isExternalLink(item.link) ? "noreferrer" : undefined}
+                  style={{
+                    display: "block",
+                    padding: "12px 16px",
+                    borderBottom:
+                      index < importantLinks.length - 1
+                        ? "1px solid #D1D5DB"
+                        : "none",
+                    color: "#0F172A",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                  }}
+                >
+                  {item.title}
+                </a>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -629,6 +643,10 @@ const HomePage = () => {
   const { currentLanguage } = useLanguage();
   const [sections, setSections] = React.useState([]);
   const [announcements, setAnnouncements] = React.useState([]);
+  const [navbarColors, setNavbarColors] = React.useState({
+    color1: "#1d4ed8",
+    color2: "#0ea5e9",
+  });
   const [loading, setLoading] = React.useState(true);
   const fullWidthStyle = {
     width: "calc(100% + 32px)",
@@ -643,9 +661,10 @@ const HomePage = () => {
     setLoading(true);
     Promise.allSettled([
       listActiveHomeSections(),
-      listPublicAnnouncements({ limit: 6 }),
+      listPublicAnnouncements({ limit: 20 }),
+      getTheme("navbar"),
     ])
-      .then(([sectionsResult, announcementsResult]) => {
+      .then(([sectionsResult, announcementsResult, navbarThemeResult]) => {
         if (!alive) return;
 
         if (sectionsResult.status === "fulfilled") {
@@ -673,12 +692,43 @@ const HomePage = () => {
           );
           setAnnouncements([]);
         }
+
+        if (navbarThemeResult.status === "fulfilled") {
+          const nextColor1 = navbarThemeResult.value?.colors?.color1;
+          const nextColor2 = navbarThemeResult.value?.colors?.color2;
+          if (nextColor1 && nextColor2) {
+            setNavbarColors({ color1: nextColor1, color2: nextColor2 });
+          }
+        }
       })
       .finally(() => {
         if (alive) setLoading(false);
       });
     return () => {
       alive = false;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    let mounted = true;
+    const refreshNavbarColors = async () => {
+      try {
+        const theme = await getTheme("navbar");
+        if (!mounted) return;
+        const nextColor1 = theme?.colors?.color1;
+        const nextColor2 = theme?.colors?.color2;
+        if (nextColor1 && nextColor2) {
+          setNavbarColors({ color1: nextColor1, color2: nextColor2 });
+        }
+      } catch (error) {
+        console.error("Failed to refresh navbar colors:", error);
+      }
+    };
+
+    window.addEventListener("navbarColorsUpdated", refreshNavbarColors);
+    return () => {
+      mounted = false;
+      window.removeEventListener("navbarColorsUpdated", refreshNavbarColors);
     };
   }, []);
 
@@ -811,9 +861,10 @@ const HomePage = () => {
         language={currentLanguage}
         heroText={heroTextSection}
       />
-      <AnnouncementsSection
+      <NoticesSection
         announcements={announcements}
         language={currentLanguage}
+        navbarColors={navbarColors}
       />
 
       {contentSections.length > 0 ? (

@@ -39,6 +39,10 @@ const getItemName = (item = {}) =>
 
 const Footer = () => {
   const [socialLinks, setSocialLinks] = React.useState(FALLBACK_SOCIAL_LINKS);
+  const [footerColors, setFooterColors] = React.useState({
+    color1: "#1a1a2e",
+    color2: "#0f4c81",
+  });
   const [footerContact, setFooterContact] = React.useState({
     address: "Mangalore, Karnataka 575001",
     phone: "+91 1234567890",
@@ -114,13 +118,32 @@ const Footer = () => {
     }
   }, []);
 
+  const loadFooterColors = React.useCallback(async () => {
+    try {
+      const navbarTheme = await getTheme("navbar");
+      const nextColor1 = navbarTheme?.colors?.color1;
+      const nextColor2 = navbarTheme?.colors?.color2;
+      if (nextColor1 && nextColor2) {
+        setFooterColors({
+          color1: nextColor1,
+          color2: nextColor2,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load navbar theme for footer colors:", error);
+    }
+  }, []);
+
   React.useEffect(() => {
     loadSocialLinks();
+    loadFooterColors();
 
     const handleFooterSocialUpdated = () => loadSocialLinks();
+    const handleNavbarColorsUpdated = () => loadFooterColors();
     window.addEventListener("footerSocialUpdated", handleFooterSocialUpdated);
     window.addEventListener("footerSettingsUpdated", handleFooterSocialUpdated);
     window.addEventListener("menusUpdated", handleFooterSocialUpdated);
+    window.addEventListener("navbarColorsUpdated", handleNavbarColorsUpdated);
 
     return () => {
       window.removeEventListener(
@@ -132,11 +155,18 @@ const Footer = () => {
         handleFooterSocialUpdated,
       );
       window.removeEventListener("menusUpdated", handleFooterSocialUpdated);
+      window.removeEventListener("navbarColorsUpdated", handleNavbarColorsUpdated);
     };
-  }, [loadSocialLinks]);
+  }, [loadSocialLinks, loadFooterColors]);
 
   return (
-    <footer className="site-footer">
+    <footer
+      className="site-footer"
+      style={{
+        "--footer-color-1": footerColors.color1,
+        "--footer-color-2": footerColors.color2,
+      }}
+    >
       <div className="footer-container">
         <div className="footer-content">
           <div className="footer-section">

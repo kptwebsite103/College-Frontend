@@ -541,9 +541,9 @@ export default function DashboardPage() {
         <div className="tile">
           <div>
             <div className="tile-title">Gallery</div>
-            <div className="tile-subtitle">Create albums</div>
+            <div className="tile-subtitle">Create and organize albums</div>
           </div>
-          <Link className="tile-action" to="/admin/media">
+          <Link className="tile-action" to="/admin/gallery">
             Manage
           </Link>
         </div>
@@ -551,7 +551,10 @@ export default function DashboardPage() {
 
       <div className="dashboard-tabs">
         <Link className="dash-tab orange" to="/admin/pages?mode=announcement">
-          Announcements
+          Notice Management
+        </Link>
+        <Link className="dash-tab blue" to="/admin/gallery">
+          Gallery Management
         </Link>
         <Link className="dash-tab blue" to="/departments">
           Feedbacks

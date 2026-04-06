@@ -532,6 +532,22 @@ const DynamicNavbar = () => {
             </Link>
           </li>
 
+          <li className="nav-item">
+            <Link
+              to="/gallery"
+              className="nav-link nav-link--parent"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 16px",
+                height: "44px",
+              }}
+            >
+              <span>{currentLanguage === "kn" ? "ಗ್ಯಾಲರಿ" : "Gallery"}</span>
+            </Link>
+          </li>
+
           {hierarchicalMenus.map((item) => {
             const key = item.id; // Now uses consistent id from buildHierarchy
             const itemUrl = generateNestedUrl(item);

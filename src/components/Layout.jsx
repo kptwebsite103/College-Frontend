@@ -172,14 +172,32 @@ export default function Layout({ children }) {
 
             {/* Show pages management for creators and above */}
             {(permissions.canCreateItems || permissions.canEditAllItems) && (
-              <NavLink
-                to="/admin/pages"
-                className={({ isActive }) =>
-                  `sidebar-link${isActive ? " active" : ""}`
-                }
-              >
-                {t("admin.pages")}
-              </NavLink>
+              <>
+                <NavLink
+                  to="/admin/pages"
+                  className={({ isActive }) =>
+                    `sidebar-link${isActive ? " active" : ""}`
+                  }
+                >
+                  {t("admin.pages")}
+                </NavLink>
+                <NavLink
+                  to="/admin/pages?mode=announcement"
+                  className={({ isActive }) =>
+                    `sidebar-link${isActive ? " active" : ""}`
+                  }
+                >
+                  Notices
+                </NavLink>
+                <NavLink
+                  to="/admin/gallery"
+                  className={({ isActive }) =>
+                    `sidebar-link${isActive ? " active" : ""}`
+                  }
+                >
+                  Gallery Management
+                </NavLink>
+              </>
             )}
           </nav>
 

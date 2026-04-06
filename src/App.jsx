@@ -18,6 +18,8 @@ import DynamicPage from "./pages/DynamicPage.jsx";
 import HomePageManagement from "./pages/HomePageManagement.jsx";
 import UserManagement from "./pages/UserManagement.jsx";
 import MediaPage from "./pages/MediaPage.jsx";
+import GalleryPage from "./pages/GalleryPage.jsx";
+import GalleryManagementPage from "./pages/GalleryManagementPage.jsx";
 
 // Admin layout component
 const AdminLayout = ({ children }) => <Layout>{children}</Layout>;
@@ -37,6 +39,14 @@ export default function App() {
         element={
           <PublicLayoutWrapper>
             <HomePage />
+          </PublicLayoutWrapper>
+        }
+      />
+      <Route
+        path="/gallery"
+        element={
+          <PublicLayoutWrapper>
+            <GalleryPage />
           </PublicLayoutWrapper>
         }
       />
@@ -132,6 +142,16 @@ export default function App() {
           <ProtectedRoute adminOnly={true}>
             <AdminLayout>
               <MediaPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/gallery"
+        element={
+          <ProtectedRoute adminOnly={true}>
+            <AdminLayout>
+              <GalleryManagementPage />
             </AdminLayout>
           </ProtectedRoute>
         }
