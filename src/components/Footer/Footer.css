@@ -283,3 +283,9 @@
     padding-top: 120px;
   }
 }
+
+@media (max-width: 768px) {
+  .app .main-content {
+    padding-top: 12px;
+  }
+}

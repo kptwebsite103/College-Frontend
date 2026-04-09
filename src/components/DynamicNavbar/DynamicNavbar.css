@@ -139,13 +139,18 @@
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .dynamic-navbar {
+    position: sticky;
     top: 56px;
+    margin-top: 56px;
+    z-index: 200;
   }
 
   .navbar-container {
+    flex-wrap: wrap;
     justify-content: space-between;
     padding: 0 12px;
-    height: 64px;
+    min-height: 64px;
+    height: auto;
   }
 
   .navbar__toggle {
@@ -153,10 +158,8 @@
   }
 
   .navbar__links {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
+    position: static;
+    width: 100%;
     background: linear-gradient(
       135deg,
       var(--navbar-color-1, #3b82f6) 0%,
@@ -171,8 +174,9 @@
   }
 
   .navbar__links.is-open {
-    max-height: 80vh;
-    overflow-y: auto;
+    max-height: 2000px;
+    overflow: visible;
+    margin-top: 6px;
   }
 
   .nav-link {
@@ -434,9 +438,11 @@
   }
 
   .navbar-container {
+    flex-wrap: wrap;
     justify-content: space-between;
     padding: 0 12px;
-    height: 64px;
+    min-height: 64px;
+    height: auto;
   }
 
   .dropdown {
