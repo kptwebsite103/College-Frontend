@@ -481,11 +481,25 @@ const DynamicNavbar = () => {
                     {getMenuText(item)}
                   </Link>
                 )
-              ) : (
-                <span className="nav-link nav-link--disabled">
-                  {getMenuText(item)}
-                </span>
-              )}
+              ) : (() => {
+                const autoSlug = generateUrlSlug(getMenuText(item));
+                if (autoSlug) {
+                  return (
+                    <Link
+                      to={itemUrl}
+                      className="nav-link"
+                      onClick={handleLeafClick}
+                    >
+                      {getMenuText(item)}
+                    </Link>
+                  );
+                }
+                return (
+                  <span className="nav-link nav-link--disabled">
+                    {getMenuText(item)}
+                  </span>
+                );
+              })()}
               {item.children &&
                 item.children.length > 0 &&
                 renderMenuItems(item.children, key, depth + 1, currentPath)}
