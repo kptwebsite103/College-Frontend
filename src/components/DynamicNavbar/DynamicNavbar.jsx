@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { listMenus, getTheme } from "../../api/resources.js";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useTranslation } from "react-i18next";
@@ -16,7 +16,7 @@ const DynamicNavbar = () => {
     color1: "#3b82f6",
     color2: "#14b8a6",
   });
-  const navigate = useNavigate();
+  const location = useLocation();
 
   // Helper function to get menu text based on current language
   const getMenuText = (item) => {
@@ -82,6 +82,14 @@ const DynamicNavbar = () => {
     return url.startsWith("http://") || url.startsWith("https://");
   };
 
+  const isMobileViewport = () =>
+    typeof window !== "undefined" && window.innerWidth <= 960;
+
+  const closeMobileMenu = () => {
+    setMobileOpen(false);
+    setOpenDropdowns({});
+  };
+
   useEffect(() => {
     fetchMenus();
     fetchNavbarColors();
@@ -117,6 +125,11 @@ const DynamicNavbar = () => {
       document.removeEventListener("click", handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    setOpenDropdowns({});
+    setMobileOpen(false);
+  }, [location.pathname, location.search]);
 
   const fetchMenus = async () => {
     try {
@@ -212,23 +225,32 @@ const DynamicNavbar = () => {
 
   const handleParentClick = (key, item, e) => {
     const url = getMenuUrl(item);
-    const isExternal = isExternalUrl(url);
 
-    // If item has children, toggle dropdown
+    // Items with children should expand/collapse to reveal submenu items.
     if (item.children && item.children.length > 0) {
-      // For external URLs, allow the link to open in new tab while also toggling dropdown
-      if (!isExternal) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
+      e.preventDefault();
+      e.stopPropagation();
       toggleDropdown(key, e);
-    } else {
-      // For items without children, let the link handle navigation
-      // But prevent navigation if no URL
-      if (!url || url === "#") {
-        e.preventDefault();
-        e.stopPropagation();
-      }
+      return;
+    }
+
+    // For items without children, prevent invalid navigation.
+    if (!url || url === "#") {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    // Close the mobile navbar after selecting a leaf item.
+    if (isMobileViewport()) {
+      closeMobileMenu();
+    }
+  };
+
+  const handleLeafClick = (e) => {
+    e?.stopPropagation?.();
+    if (isMobileViewport()) {
+      closeMobileMenu();
     }
   };
 
@@ -448,13 +470,14 @@ const DynamicNavbar = () => {
                   <a
                     href={getMenuUrl(item)}
                     className="nav-link"
+                    onClick={handleLeafClick}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     {getMenuText(item)}
                   </a>
                 ) : (
-                  <Link to={itemUrl} className="nav-link">
+                  <Link to={itemUrl} className="nav-link" onClick={handleLeafClick}>
                     {getMenuText(item)}
                   </Link>
                 )
@@ -502,6 +525,7 @@ const DynamicNavbar = () => {
             <Link
               to="/home"
               className="nav-link nav-link--parent"
+              onClick={handleLeafClick}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -536,6 +560,7 @@ const DynamicNavbar = () => {
             <Link
               to="/gallery"
               className="nav-link nav-link--parent"
+              onClick={handleLeafClick}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -633,13 +658,18 @@ const DynamicNavbar = () => {
                     <a
                       href={getMenuUrl(item)}
                       className="nav-link nav-link--parent"
+                      onClick={handleLeafClick}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
                       {getMenuText(item)}
                     </a>
                   ) : (
-                    <Link to={itemUrl} className="nav-link nav-link--parent">
+                    <Link
+                      to={itemUrl}
+                      className="nav-link nav-link--parent"
+                      onClick={handleLeafClick}
+                    >
                       {getMenuText(item)}
                     </Link>
                   )
