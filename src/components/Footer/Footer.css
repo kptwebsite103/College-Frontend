@@ -263,7 +263,7 @@
 
 .app .main-content {
   display: block;
-  padding-top: 142px; /* 62px top header + 80px navbar */
+  padding-top: 136px; /* top header + public navbar */
 }
 
 /* Ensure dynamic page content flows properly */
@@ -276,4 +276,10 @@
 .page-content-html {
   width: 100%;
   position: relative;
+}
+
+@media (max-width: 960px) {
+  .app .main-content {
+    padding-top: 120px;
+  }
 }

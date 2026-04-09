@@ -47,7 +47,7 @@ const TopHeader = () => {
         <div className="top-header-left">
           {isSignedIn ? (
             <div className="user-info">
-                <button className="login-button logged-in" onClick={handleLoginClick}>
+              <button className="login-button logged-in" onClick={handleLoginClick}>
                 <svg 
                   className="login-icon" 
                   width="16" 
@@ -60,10 +60,12 @@ const TopHeader = () => {
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                   <circle cx="12" cy="7" r="4"></circle>
                 </svg>
-                {currentUser?.firstName || currentUser?.username || 'Admin'}
+                <span className="top-header-user-label">
+                  {currentUser?.firstName || currentUser?.username || 'Admin'}
+                </span>
               </button>
               <button className="logout-button" onClick={handleLogout}>
-                {t('admin.logout')}
+                <span className="top-header-logout-label">{t('admin.logout')}</span>
               </button>
             </div>
           ) : null}

@@ -1,15 +1,17 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import TopHeader from "./TopHeader/TopHeader";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useTranslation } from "react-i18next";
 import { usePermissions } from "../utils/rolePermissions";
 
 export default function Layout({ children }) {
   const nav = useNavigate();
+  const location = useLocation();
   const { isLoaded, isSignedIn, currentUser, logout } = useAuth();
   const { t } = useTranslation();
   const { highestRole, permissions, isSuperAdmin } = usePermissions();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     // Add class to body to remove padding on admin pages
@@ -21,12 +23,29 @@ export default function Layout({ children }) {
     };
   }, []);
 
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 900) {
+        setMobileSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const handleLogout = async () => {
     const result = await logout();
     if (result.success) {
       nav("/");
     }
   };
+  const toggleSidebar = () => setMobileSidebarOpen((prev) => !prev);
+  const closeSidebar = () => setMobileSidebarOpen(false);
 
   if (!isLoaded) {
     return <div>Loading...</div>;
@@ -36,7 +55,7 @@ export default function Layout({ children }) {
     <>
       <TopHeader />
       <div className="app-shell">
-        <aside className="sidebar">
+        <aside className={`sidebar${mobileSidebarOpen ? " is-open" : ""}`}>
           <div className="sidebar-profile">
             <div className="sidebar-profile-avatar">
               {(() => {
@@ -126,7 +145,7 @@ export default function Layout({ children }) {
             </div>
           </div>
 
-          <nav className="sidebar-nav">
+          <nav className="sidebar-nav" onClick={closeSidebar}>
             <div className="sidebar-section-title">{t("admin.main_menu")}</div>
             <NavLink
               to="/admin"
@@ -203,10 +222,27 @@ export default function Layout({ children }) {
 
           <div className="sidebar-actions"></div>
         </aside>
+        <button
+          type="button"
+          className={`sidebar-overlay${mobileSidebarOpen ? " is-open" : ""}`}
+          onClick={closeSidebar}
+          aria-label="Close menu"
+        />
 
         <div className="main">
           <div className="topbar">
             <div className="topbar-left">
+              <button
+                type="button"
+                className="sidebar-toggle"
+                aria-label="Toggle menu"
+                aria-expanded={mobileSidebarOpen}
+                onClick={toggleSidebar}
+              >
+                <span />
+                <span />
+                <span />
+              </button>
               <NavLink
                 to="/admin/media"
                 className={({ isActive }) =>
