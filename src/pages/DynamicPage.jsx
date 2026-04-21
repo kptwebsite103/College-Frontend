@@ -182,15 +182,13 @@ export default function DynamicPage() {
       margin: '0',
       width: '100%',
       minHeight: '100%',
-      backgroundColor: '#ffffff',
-      color: '#374151',
-      lineHeight: '1.6'
+      backgroundColor: 'transparent'
     }}>
       {/* Page Content - Full Width */}
       <div style={{
         width: '100%',
         minHeight: '100%',
-        backgroundColor: '#ffffff',
+        backgroundColor: 'transparent',
         position: 'relative'
       }}>
         {pageData.isPage ? (
@@ -221,68 +219,55 @@ export default function DynamicPage() {
               }} 
             />
             
-            {/* Render shared CSS */}
+            {/* Default styling for HTML elements */}
+            <style>{`
+              .page-content-html {
+                max-width: none;
+                width: 100%;
+                min-height: 100%;
+              }
+              .page-content-html p { 
+                margin-bottom: 16px; 
+                line-height: 1.6;
+              }
+              .page-content-html h1 { 
+                margin-bottom: 20px;
+                font-weight: 600;
+              }
+              .page-content-html h2 { 
+                margin-bottom: 16px;
+                font-weight: 600;
+              }
+              .page-content-html h3 { 
+                margin-bottom: 14px;
+                font-weight: 600;
+              }
+              .page-content-html ul, .page-content-html ol { 
+                padding-left: 24px;
+                margin-bottom: 16px;
+              }
+              .page-content-html li { 
+                margin-bottom: 8px;
+              }
+              .page-content-html img,
+              .page-content-html video,
+              .page-content-html iframe {
+                max-width: 100%;
+                height: auto;
+              }
+            `}</style>
+
+            {/* Render shared CSS after defaults so page CSS wins */}
             {pageData.css && (
               <style>{pageData.css}</style>
             )}
-            
+
             {/* Render custom JavaScript */}
             {pageJavascript && (
               <script dangerouslySetInnerHTML={{
                 __html: pageJavascript
               }} />
             )}
-            
-            {/* Default styling for HTML elements */}
-            <style>{`
-              .page-content-html {
-                max-width: none;
-                width: 100%;
-                padding: 0 !important;
-                margin: 0 !important;
-              }
-              .page-content-html > div:first-child {
-                padding: 0 !important;
-                margin: 0 !important;
-              }
-              .page-content-html div {
-                padding-left: 0 !important;
-                padding-right: 0 !important;
-                padding-top: 0 !important;
-                padding-bottom: 0 !important;
-                border: none !important;
-                border-radius: 0 !important;
-                box-shadow: none !important;
-              }
-              .page-content-html p { 
-                font-size: 16px !important; 
-                margin-bottom: 16px; 
-                line-height: 1.6;
-              }
-              .page-content-html h1 { 
-                font-size: 28px !important; 
-                margin-bottom: 20px;
-                font-weight: 600;
-              }
-              .page-content-html h2 { 
-                font-size: 22px !important; 
-                margin-bottom: 16px;
-                font-weight: 600;
-              }
-              .page-content-html h3 { 
-                font-size: 18px !important; 
-                margin-bottom: 14px;
-                font-weight: 600;
-              }
-              .page-content-html ul, .page-content-html ol { 
-                margin-left: 24px; 
-                margin-bottom: 16px;
-              }
-              .page-content-html li { 
-                font-size: 16px !important; 
-                margin-bottom: 8px;
-              }
-            `}</style>
           </div>
         ) : (
           // Render menu placeholder
