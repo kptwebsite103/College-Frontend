@@ -175,6 +175,10 @@ export default function DynamicPage() {
     englishContent.html ||
     '<p>No content available for this page.</p>';
   const pageJavascript = localizedContent.javascript || englishContent.javascript;
+  const pageCss = typeof pageData?.css === 'string' ? pageData.css : '';
+  const hasCustomCss = pageCss.trim().length > 0;
+  const hasInlineStyleTag = /<style\b[^>]*>/i.test(pageHtml);
+  const shouldUseFallbackStyles = !hasCustomCss && !hasInlineStyleTag;
 
   return (
     <div style={{
@@ -219,47 +223,49 @@ export default function DynamicPage() {
               }} 
             />
             
-            {/* Default styling for HTML elements */}
-            <style>{`
-              .page-content-html {
-                max-width: none;
-                width: 100%;
-                min-height: 100%;
-              }
-              .page-content-html p { 
-                margin-bottom: 16px; 
-                line-height: 1.6;
-              }
-              .page-content-html h1 { 
-                margin-bottom: 20px;
-                font-weight: 600;
-              }
-              .page-content-html h2 { 
-                margin-bottom: 16px;
-                font-weight: 600;
-              }
-              .page-content-html h3 { 
-                margin-bottom: 14px;
-                font-weight: 600;
-              }
-              .page-content-html ul, .page-content-html ol { 
-                padding-left: 24px;
-                margin-bottom: 16px;
-              }
-              .page-content-html li { 
-                margin-bottom: 8px;
-              }
-              .page-content-html img,
-              .page-content-html video,
-              .page-content-html iframe {
-                max-width: 100%;
-                height: auto;
-              }
-            `}</style>
+            {/* Default styling for HTML elements (only when page has no own style code) */}
+            {shouldUseFallbackStyles ? (
+              <style>{`
+                .page-content-html {
+                  max-width: none;
+                  width: 100%;
+                  min-height: 100%;
+                }
+                .page-content-html p { 
+                  margin-bottom: 16px; 
+                  line-height: 1.6;
+                }
+                .page-content-html h1 { 
+                  margin-bottom: 20px;
+                  font-weight: 600;
+                }
+                .page-content-html h2 { 
+                  margin-bottom: 16px;
+                  font-weight: 600;
+                }
+                .page-content-html h3 { 
+                  margin-bottom: 14px;
+                  font-weight: 600;
+                }
+                .page-content-html ul, .page-content-html ol { 
+                  padding-left: 24px;
+                  margin-bottom: 16px;
+                }
+                .page-content-html li { 
+                  margin-bottom: 8px;
+                }
+                .page-content-html img,
+                .page-content-html video,
+                .page-content-html iframe {
+                  max-width: 100%;
+                  height: auto;
+                }
+              `}</style>
+            ) : null}
 
             {/* Render shared CSS after defaults so page CSS wins */}
-            {pageData.css && (
-              <style>{pageData.css}</style>
+            {pageCss && (
+              <style>{pageCss}</style>
             )}
 
             {/* Render custom JavaScript */}
