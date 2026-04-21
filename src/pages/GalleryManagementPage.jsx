@@ -318,8 +318,17 @@ export default function GalleryManagementPage() {
 
   return (
     <div className="page">
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 18 }}>
-        <div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          alignItems: "center",
+          flexWrap: "wrap",
+          marginBottom: 18,
+        }}
+      >
+        <div style={{ minWidth: 0, flex: "1 1 320px" }}>
           <h2 style={{ margin: 0, color: "#111827", fontSize: 24 }}>Gallery Management</h2>
           <p style={{ margin: "6px 0 0", color: "#6B7280", fontSize: 14 }}>
             Create albums, group photos, and control what appears in the public Gallery page.
@@ -330,6 +339,11 @@ export default function GalleryManagementPage() {
           className="btn btn-primary"
           onClick={openCreateForm}
           style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            whiteSpace: "nowrap",
+            marginLeft: "auto",
             border: "none",
             borderRadius: 8,
             background: "#2563EB",

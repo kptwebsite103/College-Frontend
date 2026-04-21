@@ -1095,6 +1095,7 @@ export function AddEditPageForm({
       html: extractedHtml,
       css: extractedCss,
       javascript: extractedJs,
+      hasStyleTag: styleMatches.length > 0,
     };
   };
 
@@ -1290,7 +1291,7 @@ export function AddEditPageForm({
       const parsed = parseSingleFileContent(value);
 
       // Update CSS (shared)
-      if (parsed.css !== formData.css) {
+      if (parsed.hasStyleTag && parsed.css !== formData.css) {
         setFormData((prev) => ({ ...prev, css: parsed.css }));
       }
 
@@ -1330,7 +1331,7 @@ export function AddEditPageForm({
       const parsed = parseSingleFileContent(value);
 
       // Update CSS (shared)
-      if (parsed.css !== formData.css) {
+      if (parsed.hasStyleTag && parsed.css !== formData.css) {
         setFormData((prev) => ({ ...prev, css: parsed.css }));
       }
 
@@ -1377,7 +1378,7 @@ export function AddEditPageForm({
       const parsed = parseSingleFileContent(enSingleFileContent);
 
       // Update CSS (shared)
-      if (parsed.css !== formData.css) {
+      if (parsed.hasStyleTag && parsed.css !== formData.css) {
         setFormData((prev) => ({ ...prev, css: parsed.css }));
       }
 
@@ -1407,7 +1408,7 @@ export function AddEditPageForm({
       const parsed = parseSingleFileContent(knSingleFileContent);
 
       // Update CSS (shared)
-      if (parsed.css !== formData.css) {
+      if (parsed.hasStyleTag && parsed.css !== formData.css) {
         setFormData((prev) => ({ ...prev, css: parsed.css }));
       }
 
@@ -1447,6 +1448,30 @@ export function AddEditPageForm({
     e.preventDefault();
 
     const payload = { ...formData };
+
+    if (!showAnnouncementFields) {
+      if (enCodeTab === "single") {
+        const parsed = parseSingleFileContent(enSingleFileContent);
+        payload.content_en = {
+          html: parsed.html,
+          javascript: parsed.javascript,
+        };
+        if (parsed.hasStyleTag) {
+          payload.css = parsed.css;
+        }
+      }
+
+      if (knCodeTab === "single") {
+        const parsed = parseSingleFileContent(knSingleFileContent);
+        payload.content_kn = {
+          html: parsed.html,
+          javascript: parsed.javascript,
+        };
+        if (parsed.hasStyleTag) {
+          payload.css = parsed.css;
+        }
+      }
+    }
 
     if (!payload.slug) {
       if (showAnnouncementFields) {
