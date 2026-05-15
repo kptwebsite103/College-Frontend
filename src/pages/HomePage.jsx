@@ -425,10 +425,9 @@ function NoticesSection({
   language = "en",
   navbarColors = { color1: "#1d4ed8", color2: "#0ea5e9" },
 }) {
-  if (!Array.isArray(announcements) || announcements.length === 0) return null;
-
+  const safeAnnouncements = Array.isArray(announcements) ? announcements : [];
   const now = new Date();
-  const noticeItems = announcements
+  const noticeItems = safeAnnouncements
     .map((page) => {
       const startDate = page?.announcement?.startDate
         ? new Date(page.announcement.startDate)
@@ -470,7 +469,6 @@ function NoticesSection({
     })
     .filter(Boolean);
 
-  if (noticeItems.length === 0) return null;
   const importantLinks = noticeItems.filter((item) => item.link);
   const cardHeaderStyle = {
     color: "#FFFFFF",
@@ -498,8 +496,13 @@ function NoticesSection({
         <div style={{ borderRadius: 16, overflow: "hidden", background: "#FFFFFF" }}>
           <div style={cardHeaderStyle}>Notice Board</div>
           <div style={{ maxHeight: 340, overflowY: "auto" }}>
-            {noticeItems.map((item, index) => (
-              <div
+            {noticeItems.length === 0 ? (
+              <div style={{ padding: 16, color: "#6B7280", fontSize: 14 }}>
+                No active notices at the moment.
+              </div>
+            ) : (
+              noticeItems.map((item, index) => (
+                <div
                 key={`${item.id || "notice"}-${index}`}
                 style={{
                   borderBottom: index < noticeItems.length - 1 ? "1px solid #D1D5DB" : "none",
@@ -553,7 +556,7 @@ function NoticesSection({
                   ) : null}
                 </div>
               </div>
-            ))}
+            )))}
           </div>
         </div>
 
