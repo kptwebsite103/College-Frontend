@@ -1,6 +1,7 @@
 import React from "react";
 import { listActiveHomeSections } from "../api/resources.js";
 import { useLanguage } from "../contexts/LanguageContext.jsx";
+import { useTranslation } from "react-i18next";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -37,7 +38,7 @@ function getLocalizedValue(value, language) {
   return value[language] || value.en || value.kn || "";
 }
 
-function normalizeAlbums(rawSections = [], language = "en") {
+function normalizeAlbums(rawSections = [], language = "en", t) {
   return (Array.isArray(rawSections) ? rawSections : [])
     .filter((section) => section?.type === "gallery" && section?.active !== false)
     .map((section) => {
@@ -55,7 +56,7 @@ function normalizeAlbums(rawSections = [], language = "en") {
 
       return {
         id: section?._id || section?.id,
-        title: getLocalizedValue(section?.title, language) || "Gallery Album",
+        title: getLocalizedValue(section?.title, language) || t("gallery.album_default"),
         description: getLocalizedValue(section?.blockContent, language),
         order: Number(section?.order || 0),
         images,
@@ -67,6 +68,7 @@ function normalizeAlbums(rawSections = [], language = "en") {
 
 export default function GalleryPage() {
   const { currentLanguage } = useLanguage();
+  const { t } = useTranslation();
   const [albums, setAlbums] = React.useState([]);
   const [activeAlbumId, setActiveAlbumId] = React.useState("");
   const [loading, setLoading] = React.useState(true);
@@ -78,7 +80,7 @@ export default function GalleryPage() {
     listActiveHomeSections({ type: "gallery", limit: 200 })
       .then((data) => {
         if (!mounted) return;
-        const normalized = normalizeAlbums(data, currentLanguage);
+        const normalized = normalizeAlbums(data, currentLanguage, t);
         setAlbums(normalized);
         setActiveAlbumId((prev) => {
           if (prev && normalized.some((album) => album.id === prev)) return prev;
@@ -106,8 +108,8 @@ export default function GalleryPage() {
   if (loading) {
     return (
       <section style={{ padding: "24px 16px" }}>
-        <h2 style={{ margin: 0, fontSize: 28, color: "#111827" }}>Gallery</h2>
-        <p style={{ color: "#6B7280", marginTop: 8 }}>Loading gallery...</p>
+        <h2 style={{ margin: 0, fontSize: 28, color: "#111827" }}>{t("gallery.title")}</h2>
+        <p style={{ color: "#6B7280", marginTop: 8 }}>{t("gallery.loading")}</p>
       </section>
     );
   }
@@ -115,9 +117,9 @@ export default function GalleryPage() {
   if (!selectedAlbum) {
     return (
       <section style={{ padding: "24px 16px" }}>
-        <h2 style={{ margin: 0, fontSize: 28, color: "#111827" }}>Gallery</h2>
+        <h2 style={{ margin: 0, fontSize: 28, color: "#111827" }}>{t("gallery.title")}</h2>
         <p style={{ color: "#6B7280", marginTop: 8 }}>
-          No gallery albums available yet.
+          {t("gallery.no_albums")}
         </p>
       </section>
     );
@@ -127,10 +129,10 @@ export default function GalleryPage() {
     <section style={{ padding: "24px 16px 32px" }}>
       <div style={{ marginBottom: 18 }}>
         <h2 style={{ margin: 0, fontSize: "clamp(26px, 3.5vw, 36px)", color: "#111827" }}>
-          Gallery
+          {t("gallery.title")}
         </h2>
         <p style={{ margin: "8px 0 0", color: "#6B7280", fontSize: 15 }}>
-          Explore photo collections shared by the college.
+          {t("gallery.explore")}
         </p>
       </div>
 

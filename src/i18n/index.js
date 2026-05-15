@@ -156,6 +156,41 @@ const resources = {
       "common.search": "Search",
       "common.filter": "Filter",
       "common.close": "Close",
+
+      // HomePage
+      "home.learn_more": "Learn More",
+      "home.notice_board": "Notice Board",
+      "home.important_links": "Important Links",
+      "home.no_notices": "No active notices at the moment.",
+      "home.no_links": "No important links added yet.",
+      "home.content_empty": "Home Content Is Empty",
+      "home.content_empty_desc": "Add banner/block sections in Homepage Management to show content below announcements.",
+      "home.loading": "Loading homepage...",
+
+      // GalleryPage
+      "gallery.title": "Gallery",
+      "gallery.loading": "Loading gallery...",
+      "gallery.no_albums": "No gallery albums available yet.",
+      "gallery.explore": "Explore photo collections shared by the college.",
+      "gallery.album_default": "Gallery Album",
+      
+      // DynamicPage
+      "dynamic.loading": "Loading page...",
+      "dynamic.not_found": "Page Not Found",
+      "dynamic.go_home": "Go Home",
+      "dynamic.no_content": "No content available for this page.",
+      "dynamic.welcome": "Welcome to",
+      "dynamic.dynamic_desc": "This is a dynamically generated page based on your navbar configuration. You can customize this page content in the admin panel.",
+      "dynamic.back_home": "Back to Home",
+      
+      // LoginPage
+      "login.admin_login": "Admin Login",
+      "login.secure_login": "Secure Login to Your Account",
+      "login.username": "Username",
+      "login.email_address": "Email Address",
+      "login.password": "Password",
+      "login.login_btn": "Login",
+      "login.excellence": "Excellence in Education"
     }
   },
   kn: {
@@ -310,6 +345,41 @@ const resources = {
       "common.search": "ಹುಡುಕಿ",
       "common.filter": "ಫಿಲ್ಟರ್",
       "common.close": "ಮುಚ್ಚಿ",
+
+      // HomePage
+      "home.learn_more": "ಇನ್ನಷ್ಟು ತಿಳಿಯಿರಿ",
+      "home.notice_board": "ಸೂಚನಾ ಫಲಕ",
+      "home.important_links": "ಪ್ರಮುಖ ಲಿಂಕ್‌ಗಳು",
+      "home.no_notices": "ಪ್ರಸ್ತುತ ಯಾವುದೇ ಸಕ್ರಿಯ ಸೂಚನೆಗಳಿಲ್ಲ.",
+      "home.no_links": "ಯಾವುದೇ ಪ್ರಮುಖ ಲಿಂಕ್‌ಗಳನ್ನು ಇನ್ನೂ ಸೇರಿಸಲಾಗಿಲ್ಲ.",
+      "home.content_empty": "ಮುಖಪುಟ ವಿಷಯ ಖಾಲಿಯಾಗಿದೆ",
+      "home.content_empty_desc": "ಪ್ರಕಟಣೆಗಳ ಕೆಳಗೆ ವಿಷಯವನ್ನು ತೋರಿಸಲು ಮುಖಪುಟ ನಿರ್ವಹಣೆಯಲ್ಲಿ ಬ್ಯಾನರ್/ಬ್ಲಾಕ್ ವಿಭಾಗಗಳನ್ನು ಸೇರಿಸಿ.",
+      "home.loading": "ಮುಖಪುಟ ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+
+      // GalleryPage
+      "gallery.title": "ಗ್ಯಾಲರಿ",
+      "gallery.loading": "ಗ್ಯಾಲರಿ ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+      "gallery.no_albums": "ಯಾವುದೇ ಗ್ಯಾಲರಿ ಆಲ್ಬಮ್‌ಗಳು ಇನ್ನೂ ಲಭ್ಯವಿಲ್ಲ.",
+      "gallery.explore": "ಕಾಲೇಜು ಹಂಚಿಕೊಂಡಿರುವ ಫೋಟೋ ಸಂಗ್ರಹಗಳನ್ನು ಅನ್ವೇಷಿಸಿ.",
+      "gallery.album_default": "ಗ್ಯಾಲರಿ ಆಲ್ಬಮ್",
+      
+      // DynamicPage
+      "dynamic.loading": "ಪುಟ ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+      "dynamic.not_found": "ಪುಟ ಕಂಡುಬಂದಿಲ್ಲ",
+      "dynamic.go_home": "ಮುಖಪುಟಕ್ಕೆ ಹೋಗಿ",
+      "dynamic.no_content": "ಈ ಪುಟಕ್ಕೆ ಯಾವುದೇ ವಿಷಯ ಲಭ್ಯವಿಲ್ಲ.",
+      "dynamic.welcome": "ಸ್ವಾಗತ",
+      "dynamic.dynamic_desc": "ನಿಮ್ಮ ನ್ಯಾವ್‌ಬಾರ್ ಕಾನ್ಫಿಗರೇಶನ್ ಆಧಾರದ ಮೇಲೆ ಇದು ಕ್ರಿಯಾತ್ಮಕವಾಗಿ ರಚಿಸಲಾದ ಪುಟವಾಗಿದೆ. ನಿರ್ವಾಹಕ ಫಲಕದಲ್ಲಿ ಈ ಪುಟದ ವಿಷಯವನ್ನು ನೀವು ಕಸ್ಟಮೈಸ್ ಮಾಡಬಹುದು.",
+      "dynamic.back_home": "ಮುಖಪುಟಕ್ಕೆ ಹಿಂತಿರುಗಿ",
+      
+      // LoginPage
+      "login.admin_login": "ನಿರ್ವಾಹಕ ಲಾಗಿನ್",
+      "login.secure_login": "ನಿಮ್ಮ ಖಾತೆಗೆ ಸುರಕ್ಷಿತ ಲಾಗಿನ್",
+      "login.username": "ಬಳಕೆದಾರ ಹೆಸರು",
+      "login.email_address": "ಇಮೇಲ್ ವಿಳಾಸ",
+      "login.password": "ಪಾಸ್ವರ್ಡ್",
+      "login.login_btn": "ಲಾಗಿನ್",
+      "login.excellence": "ಶಿಕ್ಷಣದಲ್ಲಿ ಶ್ರೇಷ್ಠತೆ"
     }
   }
 };

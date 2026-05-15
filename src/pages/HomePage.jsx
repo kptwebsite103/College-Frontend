@@ -6,6 +6,7 @@ import {
   getTheme,
 } from "../api/resources.js";
 import { useLanguage } from "../contexts/LanguageContext.jsx";
+import { useTranslation } from "react-i18next";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -129,6 +130,7 @@ const HERO_BANNER_HEIGHT = "clamp(500px, 36vw, 700px)";
 const HERO_MEDIA_FIT_MODE = "cover";
 
 function HeroCarousel({ slides = [], language = "en", heroText = null }) {
+  const { t } = useTranslation();
   const safeSlides = Array.isArray(slides)
     ? slides.filter((slide) => {
         if (!slide) return false;
@@ -367,7 +369,7 @@ function HeroCarousel({ slides = [], language = "en", heroText = null }) {
                             fontSize: 14,
                           }}
                         >
-                          Learn More
+                          {t("home.learn_more")}
                         </a>
                       ) : null}
                     </>
@@ -425,6 +427,7 @@ function NoticesSection({
   language = "en",
   navbarColors = { color1: "#1d4ed8", color2: "#0ea5e9" },
 }) {
+  const { t } = useTranslation();
   const safeAnnouncements = Array.isArray(announcements) ? announcements : [];
   const now = new Date();
   const noticeItems = safeAnnouncements
@@ -494,11 +497,11 @@ function NoticesSection({
         }}
       >
         <div style={{ borderRadius: 16, overflow: "hidden", background: "#FFFFFF" }}>
-          <div style={cardHeaderStyle}>Notice Board</div>
+          <div style={cardHeaderStyle}>{t("home.notice_board")}</div>
           <div style={{ maxHeight: 340, overflowY: "auto" }}>
             {noticeItems.length === 0 ? (
               <div style={{ padding: 16, color: "#6B7280", fontSize: 14 }}>
-                No active notices at the moment.
+                {t("home.no_notices")}
               </div>
             ) : (
               noticeItems.map((item, index) => (
@@ -561,11 +564,11 @@ function NoticesSection({
         </div>
 
         <div style={{ borderRadius: 16, overflow: "hidden", background: "#FFFFFF" }}>
-          <div style={cardHeaderStyle}>Important Links</div>
+          <div style={cardHeaderStyle}>{t("home.important_links")}</div>
           <div style={{ maxHeight: 340, overflowY: "auto" }}>
             {importantLinks.length === 0 ? (
               <div style={{ padding: 16, color: "#6B7280", fontSize: 14 }}>
-                No important links added yet.
+                {t("home.no_links")}
               </div>
             ) : (
               importantLinks.map((item, index) => (
@@ -779,7 +782,7 @@ const HomePage = () => {
                     fontSize: 14,
                   }}
                 >
-                  Learn More
+                  {t("home.learn_more")}
                 </a>
               ) : null}
             </div>
@@ -852,7 +855,7 @@ const HomePage = () => {
   if (loading && sections.length === 0) {
     return (
       <div style={{ ...fullWidthStyle, padding: "24px 16px" }}>
-        <p>Loading homepage...</p>
+        <p>{t("home.loading")}</p>
       </div>
     );
   }
@@ -887,11 +890,11 @@ const HomePage = () => {
           }}
         >
           <h3 style={{ margin: "0 0 8px", fontSize: 18, color: "#111827" }}>
-            Home Content Is Empty
+            {t("home.content_empty")}
           </h3>
           <p style={{ margin: 0, color: "#6B7280", fontSize: 14 }}>
-            Add banner/block sections in Homepage Management to show content
-            below announcements.
+            {t("home.content_empty_desc")}
+
           </p>
         </section>
       )}

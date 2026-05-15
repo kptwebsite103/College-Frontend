@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from "react-i18next";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
 
   useEffect(() => {
     document.body.classList.add('auth-page');
@@ -48,12 +50,12 @@ export default function LoginPage() {
             </div>
           </div>
           <h1 className="college-name">KPT MANGALORE</h1>
-          <p className="college-tagline">Excellence in Education</p>
+          <p className="college-tagline">{t("login.excellence")}</p>
         </div>
 
         <form className="glass-form" onSubmit={handleSubmit}>
-          <h2 className="form-title">Admin Login</h2>
-          <p className="form-subtitle">Secure Login to Your Account</p>
+          <h2 className="form-title">{t("login.admin_login")}</h2>
+          <p className="form-subtitle">{t("login.secure_login")}</p>
 
           {error && (
             <div className="error-card">
@@ -69,7 +71,7 @@ export default function LoginPage() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Username"
+              placeholder={t("login.username")}
               required
               className="glass-input"
             />
@@ -80,7 +82,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email Address"
+              placeholder={t("login.email_address")}
               required
               className="glass-input"
             />
@@ -92,7 +94,7 @@ export default function LoginPage() {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
+                placeholder={t("login.password")}
                 required
                 className="glass-input"
               />
@@ -117,7 +119,7 @@ export default function LoginPage() {
           </div>
 
           <button type="submit" className="glass-button">
-            <span>Login</span>
+            <span>{t("login.login_btn")}</span>
             <svg className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>

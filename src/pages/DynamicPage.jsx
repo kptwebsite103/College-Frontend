@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { listMenus, getPageBySlug } from '../api/resources.js';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useTranslation } from "react-i18next";
 
 function getLocalePageContent(content, locale) {
   const value = content && typeof content === 'object' ? content[locale] : null;
@@ -22,6 +23,7 @@ export default function DynamicPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentLanguage } = useLanguage();
+  const { t } = useTranslation();
   const [pageData, setPageData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -127,7 +129,7 @@ export default function DynamicPage() {
         backgroundColor: '#ffffff',
         padding: '40px'
       }}>
-        Loading page...
+        {t("dynamic.loading")}
       </div>
     );
   }
@@ -145,7 +147,7 @@ export default function DynamicPage() {
         backgroundColor: '#ffffff',
         boxSizing: 'border-box'
       }}>
-        <h2 style={{ color: '#ef4444', marginBottom: '16px' }}>Page Not Found</h2>
+        <h2 style={{ color: '#ef4444', marginBottom: '16px' }}>{t("dynamic.not_found")}</h2>
         <p style={{ color: '#6b7280', marginBottom: '24px' }}>
           {error}
         </p>
@@ -162,7 +164,7 @@ export default function DynamicPage() {
             fontWeight: '500'
           }}
         >
-          Go Home
+          {t("dynamic.go_home")}
         </button>
       </div>
     );
@@ -173,7 +175,7 @@ export default function DynamicPage() {
   const pageHtml =
     localizedContent.html ||
     englishContent.html ||
-    '<p>No content available for this page.</p>';
+    `<p>${t("dynamic.no_content")}</p>`;
   const pageJavascript = localizedContent.javascript || englishContent.javascript;
   const pageCss = typeof pageData?.css === 'string' ? pageData.css : '';
   const hasCustomCss = pageCss.trim().length > 0;
@@ -294,12 +296,12 @@ export default function DynamicPage() {
               marginBottom: '16px',
               color: '#374151'
             }}>
-              Welcome to {pageData.menu_name_en || pageData.name || 'this page'}
+              {t("dynamic.welcome")} {pageData.menu_name_en || pageData.name || 'this page'}
             </h3>
 
             <p style={{ marginBottom: '24px' }}>
-              This is a dynamically generated page based on your navbar configuration.
-              You can customize this page content in the admin panel.
+              {t("dynamic.dynamic_desc")}
+
             </p>
 
             <button
@@ -315,7 +317,7 @@ export default function DynamicPage() {
                 fontWeight: '500'
               }}
             >
-              Back to Home
+              {t("dynamic.back_home")}
             </button>
           </div>
         )}
