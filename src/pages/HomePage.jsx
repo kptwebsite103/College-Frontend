@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import {
   getPageBySlug,
   listActiveHomeSections,
@@ -82,11 +83,16 @@ function resolveNoticeLink(rawLink = "") {
   const link = String(rawLink || "").trim();
   if (!link) return "";
   if (/^(?:data|blob):/i.test(link)) return link;
+  if (/^#/i.test(link)) return link;
+  if (/^(?:mailto:|tel:)/i.test(link)) return link;
   if (/^(?:https?:)?\/\//i.test(link)) {
     return link.startsWith("//") ? `${window.location.protocol}${link}` : link;
   }
   if (/^\/?api\/uploads\//i.test(link) || /^\/uploads\//i.test(link)) {
     return resolveMediaUrl(link);
+  }
+  if (/^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+(\/|$|\?|\#)/i.test(link)) {
+    return `https://${link.replace(/^\/+/, "")}`;
   }
   if (link.startsWith("/")) return link;
   return `/${link}`;
@@ -94,6 +100,19 @@ function resolveNoticeLink(rawLink = "") {
 
 function isExternalLink(url = "") {
   return /^https?:\/\//i.test(String(url || "").trim());
+}
+
+function isInternalAppRoute(url = "") {
+  const link = String(url || "").trim();
+  if (!link) return false;
+  if (/^(?:https?:)?\/\//i.test(link)) return false;
+  if (/^(?:data|blob):/i.test(link)) return false;
+  if (/^(?:mailto:|tel:)/i.test(link)) return false;
+  if (/^#/i.test(link)) return false;
+  if (/^\/?api\/uploads\//i.test(link) || /^\/uploads\//i.test(link)) {
+    return false;
+  }
+  return link.startsWith("/");
 }
 
 function isVideoUrl(url = "") {
@@ -589,27 +608,53 @@ function NoticesSection({
                 {t("home.no_links")}
               </div>
             ) : (
-              importantLinks.map((item, index) => (
-                <a
-                  key={`${item.id || "link"}-${index}`}
-                  href={item.link}
-                  target={isExternalLink(item.link) ? "_blank" : undefined}
-                  rel={isExternalLink(item.link) ? "noreferrer" : undefined}
-                  style={{
-                    display: "block",
-                    padding: "12px 16px",
-                    borderBottom:
-                      index < importantLinks.length - 1
-                        ? "1px solid #D1D5DB"
-                        : "none",
-                    color: "#0F172A",
-                    textDecoration: "none",
-                    fontWeight: 600,
-                  }}
-                >
-                  {item.title}
-                </a>
-              ))
+              importantLinks.map((item, index) => {
+                const itemStyle = {
+                  display: "block",
+                  padding: "12px 16px",
+                  borderBottom:
+                    index < importantLinks.length - 1
+                      ? "1px solid #D1D5DB"
+                      : "none",
+                  color: "#0F172A",
+                  textDecoration: "none",
+                  fontWeight: 600,
+                };
+
+                const content = (
+                  <>
+                    <div style={{ color: "#0F172A" }}>{item.title}</div>
+                    {item.linkLabel ? (
+                      <div
+                        style={{
+                          marginTop: 4,
+                          color: "#2563EB",
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {item.linkLabel}
+                      </div>
+                    ) : null}
+                  </>
+                );
+
+                return isInternalAppRoute(item.link) ? (
+                  <Link key={`${item.id || "link"}-${index}`} to={item.link} style={itemStyle}>
+                    {content}
+                  </Link>
+                ) : (
+                  <a
+                    key={`${item.id || "link"}-${index}`}
+                    href={item.link}
+                    target={isExternalLink(item.link) ? "_blank" : undefined}
+                    rel={isExternalLink(item.link) ? "noreferrer" : undefined}
+                    style={itemStyle}
+                  >
+                    {content}
+                  </a>
+                );
+              })
             )}
           </div>
         </div>
