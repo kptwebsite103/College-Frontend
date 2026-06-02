@@ -647,6 +647,7 @@ function PageContentSection({ section, language }) {
 
 const HomePage = () => {
   const { currentLanguage } = useLanguage();
+  const { t } = useTranslation();
   const [sections, setSections] = React.useState([]);
   const [announcements, setAnnouncements] = React.useState([]);
   const [navbarColors, setNavbarColors] = React.useState({
