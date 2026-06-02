@@ -53,6 +53,17 @@ export default function MediaPage() {
     loadMediaItems();
   }, []);
 
+  // Set up background polling for real-time updates when not actively uploading
+  useEffect(() => {
+    if (uploading || showUploadModal) return;
+
+    const interval = setInterval(() => {
+      loadMediaItems({ silent: true });
+    }, 4500);
+
+    return () => clearInterval(interval);
+  }, [uploading, showUploadModal]);
+
   const loadMediaItems = async ({ silent = false } = {}) => {
     try {
       if (!silent) setLoading(true);

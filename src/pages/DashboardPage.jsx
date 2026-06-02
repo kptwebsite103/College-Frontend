@@ -551,13 +551,10 @@ export default function DashboardPage() {
 
       <div className="dashboard-tabs">
         <Link className="dash-tab orange" to="/admin/pages?mode=announcement">
-          Notice Management
+          Notice & Announcement Management
         </Link>
         <Link className="dash-tab blue" to="/admin/gallery">
           Gallery Management
-        </Link>
-        <Link className="dash-tab blue" to="/departments">
-          Feedbacks
         </Link>
         <button
           type="button"

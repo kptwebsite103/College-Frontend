@@ -66,9 +66,9 @@ export default function MenusPage() {
     loadTheme();
   }, []);
 
-  async function fetchMenus() {
-    setLoading(true);
-    setError(null);
+  async function fetchMenus(quiet = false) {
+    if (!quiet) setLoading(true);
+    if (!quiet) setError(null);
     try {
       const res = await listMenus();
       // Filter out footer items from Navbar management
@@ -114,10 +114,10 @@ export default function MenusPage() {
       return menusWithIds;
     } catch (e) {
       console.error("❌ Error fetching menus:", e);
-      setError(e);
+      if (!quiet) setError(e);
       return [];
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }
 
@@ -129,6 +129,21 @@ export default function MenusPage() {
       }
     });
   }, []);
+
+  // Set up background polling for real-time updates when not actively editing
+  useEffect(() => {
+    if (showAddForm || currentParentMenu) return;
+
+    const interval = setInterval(() => {
+      fetchMenus(true).then((apiMenus) => {
+        if (apiMenus && apiMenus.length > 0) {
+          setMenus(apiMenus);
+        }
+      });
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [showAddForm, currentParentMenu]);
 
   const findItemPath = (menuList, targetId) => {
     const findInItems = (items, path) => {

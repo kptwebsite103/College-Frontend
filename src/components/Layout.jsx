@@ -206,7 +206,7 @@ export default function Layout({ children }) {
                     `sidebar-link${isActive ? " active" : ""}`
                   }
                 >
-                  Notices
+                  Notices & Announcements
                 </NavLink>
                 <NavLink
                   to="/admin/gallery"

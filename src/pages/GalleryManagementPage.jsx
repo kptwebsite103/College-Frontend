@@ -92,9 +92,9 @@ export default function GalleryManagementPage() {
     setSuccess("");
   }, []);
 
-  const loadAlbums = React.useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const loadAlbums = React.useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
+    if (!quiet) setError("");
     try {
       const data = await listHomeSections({ type: "gallery", limit: 300 });
       const normalized = (Array.isArray(data) ? data : [])
@@ -103,16 +103,27 @@ export default function GalleryManagementPage() {
       setAlbums(normalized);
     } catch (err) {
       console.error("Failed to load gallery albums:", err);
-      setError("Failed to load gallery albums.");
+      if (!quiet) setError("Failed to load gallery albums.");
       setAlbums([]);
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, []);
 
   React.useEffect(() => {
     loadAlbums();
   }, [loadAlbums]);
+
+  // Set up background polling for real-time updates when not actively editing
+  React.useEffect(() => {
+    if (formOpen) return;
+
+    const interval = setInterval(() => {
+      loadAlbums(true);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [formOpen, loadAlbums]);
 
   const loadMediaLibrary = React.useCallback(async () => {
     setMediaLoading(true);

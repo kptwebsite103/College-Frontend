@@ -27,6 +27,17 @@ const UserManagementContent = () => {
     loadUsers();
   }, []);
 
+  // Set up background polling for real-time updates when not actively editing
+  useEffect(() => {
+    if (showAddUserForm || editingUser) return;
+
+    const interval = setInterval(() => {
+      loadUsers();
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [showAddUserForm, editingUser]);
+
   const loadUsers = async () => {
     try {
       const usersData = await listUsers();

@@ -69,6 +69,17 @@ export default function PagesPage() {
     loadPages();
   }, []);
 
+  // Set up background polling for real-time updates
+  useEffect(() => {
+    if (showAddForm) return;
+
+    const interval = setInterval(() => {
+      loadPages(true);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [showAddForm]);
+
   useEffect(() => {
     const createMode = searchParams.get("create") === "1";
     if (!createMode || didAutoOpenRef.current) return;
@@ -92,16 +103,16 @@ export default function PagesPage() {
     }
   }, [searchParams, pages.length]);
 
-  const loadPages = async () => {
+  const loadPages = async (quiet = false) => {
     try {
-      setLoading(true);
+      if (!quiet) setLoading(true);
       const response = await listPages();
       setPages(response || []);
     } catch (error) {
       console.error("Error loading pages:", error);
-      showNotification("error", "Failed to load pages from database.");
+      if (!quiet) showNotification("error", "Failed to load pages from database.");
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   };
 
