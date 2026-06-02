@@ -49,12 +49,10 @@ export default function PagesPage() {
 
   const hasAnnouncementTag = (page) =>
     Array.isArray(page?.tags) &&
-    page.tags.some(
-      (tag) =>
-        String(tag || "")
-          .trim()
-          .toLowerCase() === "announcement",
-    );
+    page.tags.some((tag) => {
+      const val = String(tag || "").trim().toLowerCase();
+      return val === "announcement" || val === "important_link";
+    });
 
   const normalizeStatus = (status) => {
     const value = String(status || "").toLowerCase();
@@ -246,10 +244,10 @@ export default function PagesPage() {
         ? pageData.tags.filter((tag) => String(tag || "").trim())
         : [];
       const isAnnouncementTag = normalizedTags.some(
-        (tag) =>
-          String(tag || "")
-            .trim()
-            .toLowerCase() === "announcement",
+        (tag) => {
+          const val = String(tag || "").trim().toLowerCase();
+          return val === "announcement" || val === "important_link";
+        }
       );
 
       // Transform form data to match database schema
@@ -636,11 +634,11 @@ export default function PagesPage() {
                             borderRadius: "12px",
                             fontSize: "12px",
                             fontWeight: "500",
-                            background: "#DBEAFE",
-                            color: "#1D4ED8",
+                            background: page.tags?.some(t => String(t || "").trim().toLowerCase() === "important_link") ? "#FEF3C7" : "#DBEAFE",
+                            color: page.tags?.some(t => String(t || "").trim().toLowerCase() === "important_link") ? "#92400E" : "#1D4ED8",
                           }}
                         >
-                          Announcement
+                          {page.tags?.some(t => String(t || "").trim().toLowerCase() === "important_link") ? "Important Link" : "Announcement"}
                         </span>
                       )}
                     </div>
@@ -915,36 +913,28 @@ export function AddEditPageForm({
 
   const isAnnouncement =
     Array.isArray(formData.tags) &&
-    formData.tags.some(
-      (tag) =>
-        String(tag || "")
-          .trim()
-          .toLowerCase() === "announcement",
-    );
+    formData.tags.some((tag) => {
+      const val = String(tag || "").trim().toLowerCase();
+      return val === "announcement" || val === "important_link";
+    });
   const showAnnouncementFields = forceAnnouncement || isAnnouncement;
 
   const handleAnnouncementToggle = (checked) => {
     setFormData((prev) => {
-      const nextTags = Array.isArray(prev.tags) ? [...prev.tags] : [];
-      const hasTag = nextTags.some(
-        (tag) =>
-          String(tag || "")
-            .trim()
-            .toLowerCase() === "announcement",
-      );
-      if (checked && !hasTag) {
-        nextTags.push("announcement");
-      }
-      if (!checked && hasTag) {
-        return {
-          ...prev,
-          tags: nextTags.filter(
-            (tag) =>
-              String(tag || "")
-                .trim()
-                .toLowerCase() !== "announcement",
-          ),
-        };
+      let nextTags = Array.isArray(prev.tags) ? [...prev.tags] : [];
+      if (checked) {
+        const hasAny = nextTags.some((tag) => {
+          const val = String(tag || "").trim().toLowerCase();
+          return val === "announcement" || val === "important_link";
+        });
+        if (!hasAny) {
+          nextTags.push("announcement");
+        }
+      } else {
+        nextTags = nextTags.filter((tag) => {
+          const val = String(tag || "").trim().toLowerCase();
+          return val !== "announcement" && val !== "important_link";
+        });
       }
       return { ...prev, tags: nextTags };
     });
@@ -1523,9 +1513,17 @@ export function AddEditPageForm({
         return;
       }
 
-      payload.tags = Array.from(
-        new Set([...(payload.tags || []), "announcement"]),
+      const hasAnyAnnTag = (payload.tags || []).some(
+        (t) => {
+          const val = String(t).trim().toLowerCase();
+          return val === "announcement" || val === "important_link";
+        }
       );
+      if (!hasAnyAnnTag) {
+        payload.tags = Array.from(
+          new Set([...(payload.tags || []), "announcement"]),
+        );
+      }
       payload.content_en = {
         html: textEn ? `<p>${textEn.replace(/\n/g, "<br/>")}</p>` : "",
         javascript: "",
@@ -2123,6 +2121,90 @@ export function AddEditPageForm({
 
       {/* Form */}
       <form onSubmit={handleSubmit} style={{ padding: "24px" }}>
+        {showAnnouncementFields && (
+          <div
+            style={{
+              marginBottom: "24px",
+              padding: "16px",
+              background: "#F9FAFB",
+              borderRadius: "8px",
+              border: "1px solid #E5E7EB",
+            }}
+          >
+            <label
+              style={{
+                display: "block",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: "#374151",
+                marginBottom: "8px",
+              }}
+            >
+              Notice / Link Type
+            </label>
+            <div style={{ display: "flex", gap: "24px" }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  color: "#374151",
+                }}
+              >
+                <input
+                  type="radio"
+                  name="announcement_type"
+                  value="announcement"
+                  checked={!formData.tags?.some(t => String(t).toLowerCase() === "important_link")}
+                  onChange={() => {
+                    setFormData((prev) => {
+                      const tags = (prev.tags || []).filter(
+                        (t) => String(t).toLowerCase() !== "important_link",
+                      );
+                      if (!tags.some((t) => String(t).toLowerCase() === "announcement")) {
+                        tags.push("announcement");
+                      }
+                      return { ...prev, tags };
+                    });
+                  }}
+                />
+                Notice Board Announcement
+              </label>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  color: "#374151",
+                }}
+              >
+                <input
+                  type="radio"
+                  name="announcement_type"
+                  value="important_link"
+                  checked={formData.tags?.some(t => String(t).toLowerCase() === "important_link")}
+                  onChange={() => {
+                    setFormData((prev) => {
+                      const tags = (prev.tags || []).filter(
+                        (t) => String(t).toLowerCase() !== "announcement",
+                      );
+                      if (!tags.some((t) => String(t).toLowerCase() === "important_link")) {
+                        tags.push("important_link");
+                      }
+                      return { ...prev, tags };
+                    });
+                  }}
+                />
+                Important Link
+              </label>
+            </div>
+          </div>
+        )}
+
         {language === "en" ? (
           /* English Fields */
           <div>

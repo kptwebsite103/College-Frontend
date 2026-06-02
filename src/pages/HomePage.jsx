@@ -430,7 +430,7 @@ function NoticesSection({
   const { t } = useTranslation();
   const safeAnnouncements = Array.isArray(announcements) ? announcements : [];
   const now = new Date();
-  const noticeItems = safeAnnouncements
+  const mappedItems = safeAnnouncements
     .map((page) => {
       const startDate = page?.announcement?.startDate
         ? new Date(page.announcement.startDate)
@@ -468,11 +468,29 @@ function NoticesSection({
         summary: title ? text : "",
         link: resolveNoticeLink(linkRaw),
         linkLabel,
+        tags: Array.isArray(page?.tags) ? page.tags.map(t => String(t).toLowerCase()) : [],
+        slug: String(page?.slug || "").toLowerCase(),
       };
     })
     .filter(Boolean);
 
-  const importantLinks = noticeItems.filter((item) => item.link);
+  const noticeItems = mappedItems.filter((item) => {
+    const hasLinkTag = item.tags.includes("important_link");
+    const hasAnnTag = item.tags.includes("announcement");
+    const slugMatch = item.slug.includes("announcement");
+
+    if (hasLinkTag && !hasAnnTag) return false;
+    return hasAnnTag || slugMatch || (!hasLinkTag && !hasAnnTag);
+  });
+
+  const importantLinks = mappedItems.filter((item) => {
+    const hasLinkTag = item.tags.includes("important_link");
+    const hasAnnTag = item.tags.includes("announcement");
+
+    if (hasLinkTag) return true;
+    if (item.link && !hasAnnTag) return true;
+    return false;
+  });
   const cardHeaderStyle = {
     color: "#FFFFFF",
     fontWeight: 700,
