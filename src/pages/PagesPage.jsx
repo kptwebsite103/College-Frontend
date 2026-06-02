@@ -60,6 +60,15 @@ export default function PagesPage() {
     return value || "pending";
   };
 
+  const isHomepageManagedPage = (slug) => {
+    const normalizedSlug = String(slug || "").trim().toLowerCase();
+    return (
+      normalizedSlug === "/" ||
+      normalizedSlug === "/home" ||
+      normalizedSlug.startsWith("home-section-")
+    );
+  };
+
   // Load pages from database on component mount
   useEffect(() => {
     // Ensure development authentication exists
@@ -130,10 +139,10 @@ export default function PagesPage() {
     const page = pages.find((p) => p._id === pageId);
     if (page) {
       // Check if the page has a restricted route
-      if (isRestrictedRoute(page.slug)) {
+      if (isHomepageManagedPage(page.slug)) {
         showNotification(
           "error",
-          'Pages with routes "/" and "/home" are managed by the homepage section and cannot be deleted here.',
+          'Pages with routes "/", "/home", and internal "home-section-*" pages are managed by the homepage section and cannot be deleted here.',
         );
         return;
       }
@@ -159,15 +168,14 @@ export default function PagesPage() {
   };
 
   const isRestrictedRoute = (slug) => {
-    const restrictedRoutes = ["/", "/home"];
-    return restrictedRoutes.includes(slug?.toLowerCase().trim());
+    return isHomepageManagedPage(slug);
   };
 
   const validatePageRoute = (slug, isEditing = false) => {
     if (isRestrictedRoute(slug)) {
       showNotification(
         "error",
-        'Routes "/" and "/home" are reserved for the homepage section and cannot be used here.',
+        'Routes "/", "/home", and internal "home-section-*" pages are reserved for the homepage section and cannot be used here.',
       );
       return false;
     }
@@ -217,10 +225,10 @@ export default function PagesPage() {
       const page = pages.find((p) => p._id === pageId);
       if (page) {
         // Check if the page has a restricted route
-        if (isRestrictedRoute(page.slug)) {
+        if (isHomepageManagedPage(page.slug)) {
           showNotification(
             "error",
-            'Pages with routes "/" and "/home" are managed by the homepage section and cannot be edited here.',
+            'Pages with routes "/", "/home", and internal "home-section-*" pages are managed by the homepage section and cannot be edited here.',
           );
           return;
         }
@@ -343,8 +351,12 @@ export default function PagesPage() {
   };
 
   const visiblePages = announcementMode
-    ? pages.filter(hasAnnouncementTag)
-    : pages.filter((page) => !hasAnnouncementTag(page));
+    ? pages.filter(
+        (page) => hasAnnouncementTag(page) && !isHomepageManagedPage(page.slug),
+      )
+    : pages.filter(
+        (page) => !hasAnnouncementTag(page) && !isHomepageManagedPage(page.slug),
+      );
 
   return (
     <div style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto" }}>
