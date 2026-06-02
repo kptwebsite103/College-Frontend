@@ -331,41 +331,37 @@ export default function GalleryManagementPage() {
     <div className="page">
       <div
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 12,
-          alignItems: "center",
-          flexWrap: "wrap",
           marginBottom: 18,
         }}
       >
-        <div style={{ minWidth: 0, flex: "1 1 320px" }}>
+        <div style={{ minWidth: 0 }}>
           <h2 style={{ margin: 0, color: "#111827", fontSize: 24 }}>Gallery Management</h2>
           <p style={{ margin: "6px 0 0", color: "#6B7280", fontSize: 14 }}>
             Create albums, group photos, and control what appears in the public Gallery page.
           </p>
         </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={openCreateForm}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            whiteSpace: "nowrap",
-            marginLeft: "auto",
-            border: "none",
-            borderRadius: 8,
-            background: "#2563EB",
-            color: "#FFFFFF",
-            padding: "10px 14px",
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          + Add Album
-        </button>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={openCreateForm}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              whiteSpace: "nowrap",
+              border: "none",
+              borderRadius: 8,
+              background: "#2563EB",
+              color: "#FFFFFF",
+              padding: "10px 14px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            + Add Album
+          </button>
+        </div>
       </div>
 
       {error ? (
@@ -383,7 +379,33 @@ export default function GalleryManagementPage() {
         {loading ? (
           <div style={{ color: "#6B7280", fontSize: 14 }}>Loading albums...</div>
         ) : albums.length === 0 ? (
-          <div style={{ color: "#6B7280", fontSize: 14 }}>No albums yet. Click "Add Album".</div>
+          <div
+            style={{
+              color: "#6B7280",
+              fontSize: 14,
+              border: "1px dashed #D1D5DB",
+              borderRadius: 12,
+              padding: 16,
+              background: "#F9FAFB",
+            }}
+          >
+            <div style={{ marginBottom: 12 }}>No albums yet. Click "Add Album" to create the first one.</div>
+            <button
+              type="button"
+              onClick={openCreateForm}
+              style={{
+                border: "none",
+                borderRadius: 8,
+                background: "#2563EB",
+                color: "#FFFFFF",
+                padding: "10px 14px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              + Add Album
+            </button>
+          </div>
         ) : (
           albums.map((album) => {
             const cover = album.images?.[0]?.image || "";
