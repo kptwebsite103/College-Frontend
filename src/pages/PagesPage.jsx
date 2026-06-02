@@ -344,7 +344,7 @@ export default function PagesPage() {
 
   const visiblePages = announcementMode
     ? pages.filter(hasAnnouncementTag)
-    : pages;
+    : pages.filter((page) => !hasAnnouncementTag(page));
 
   return (
     <div style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto" }}>
