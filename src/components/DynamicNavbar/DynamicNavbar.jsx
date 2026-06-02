@@ -127,6 +127,26 @@ const DynamicNavbar = () => {
   }, []);
 
   useEffect(() => {
+    const handleVisibilityRefresh = () => {
+      if (document.visibilityState === "visible") {
+        fetchNavbarColors();
+      }
+    };
+
+    const handleFocusRefresh = () => {
+      fetchNavbarColors();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityRefresh);
+    window.addEventListener("focus", handleFocusRefresh);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityRefresh);
+      window.removeEventListener("focus", handleFocusRefresh);
+    };
+  }, []);
+
+  useEffect(() => {
     setOpenDropdowns({});
     setMobileOpen(false);
   }, [location.pathname, location.search]);
