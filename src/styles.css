@@ -662,6 +662,10 @@ body.admin-page .main-content {
   background: #1d4ed8;
 }
 
+.dash-tab.green {
+  background: #059669;
+}
+
 .dash-tab.dark {
   background: #0f172a;
 }

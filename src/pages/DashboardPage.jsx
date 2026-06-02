@@ -547,6 +547,16 @@ export default function DashboardPage() {
             Manage
           </Link>
         </div>
+
+        <div className="tile">
+          <div>
+            <div className="tile-title">Navbar</div>
+            <div className="tile-subtitle">Change the website header colors</div>
+          </div>
+          <Link className="tile-action" to="/admin/menus?theme=navbar">
+            Theme
+          </Link>
+        </div>
       </div>
 
       <div className="dashboard-tabs">
@@ -555,6 +565,9 @@ export default function DashboardPage() {
         </Link>
         <Link className="dash-tab blue" to="/admin/gallery">
           Gallery Management
+        </Link>
+        <Link className="dash-tab green" to="/admin/menus?theme=navbar">
+          Navbar Theme
         </Link>
         <button
           type="button"

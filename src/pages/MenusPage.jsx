@@ -19,7 +19,7 @@ export default function MenusPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [menus, setMenus] = useState([]);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isAdmin, isSuperAdmin } = usePermissions();
   const canReview = isAdmin || isSuperAdmin;
   const [highlightedMenuId, setHighlightedMenuId] = useState(null);
@@ -65,6 +65,10 @@ export default function MenusPage() {
 
     loadTheme();
   }, []);
+
+  useEffect(() => {
+    setShowColorPicker(searchParams.get("theme") === "navbar");
+  }, [searchParams]);
 
   async function fetchMenus(quiet = false) {
     if (!quiet) setLoading(true);
@@ -1466,11 +1470,15 @@ export default function MenusPage() {
   };
 
   const handlePageColourClick = () => {
-    setShowColorPicker(true);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("theme", "navbar");
+    setSearchParams(nextParams);
   };
 
   const handleBackToMenu = () => {
-    setShowColorPicker(false);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("theme");
+    setSearchParams(nextParams);
   };
 
   const handleCancelForm = () => {
@@ -2042,7 +2050,7 @@ export default function MenusPage() {
                 }}
                 onClick={handlePageColourClick}
               >
-                Page Colour
+                Navbar Theme
               </button>
             </div>
 
@@ -2365,7 +2373,7 @@ export default function MenusPage() {
                 marginBottom: "20px",
               }}
             >
-              Page Colour Settings
+              Navbar Theme Settings
             </h3>
 
             <div

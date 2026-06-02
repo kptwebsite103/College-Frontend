@@ -179,6 +179,14 @@ export default function Layout({ children }) {
                   {t("admin.navbar")}
                 </NavLink>
                 <NavLink
+                  to="/admin/menus?theme=navbar"
+                  className={({ isActive }) =>
+                    `sidebar-link${isActive ? " active" : ""}`
+                  }
+                >
+                  Navbar Theme
+                </NavLink>
+                <NavLink
                   to="/admin/footer"
                   className={({ isActive }) =>
                     `sidebar-link${isActive ? " active" : ""}`
