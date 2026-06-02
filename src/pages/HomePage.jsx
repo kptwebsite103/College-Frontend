@@ -696,15 +696,27 @@ function PageContentSection({ section, language }) {
   const htmlFromPage = getLocalizedValue(pageData?.content, language)?.html || "";
   const htmlFallback = getLocalizedValue(section?.blockContent, language) || "";
   const htmlContent = htmlFromPage || htmlFallback;
+  const pageContent =
+    pageData?.content && typeof pageData.content === "object"
+      ? pageData.content[language] || pageData.content.en || pageData.content.kn || {}
+      : {};
+  const pageCss = typeof pageData?.css === "string" ? pageData.css : "";
+  const pageJavascript = typeof pageContent?.javascript === "string" ? pageContent.javascript : "";
 
   if (!htmlContent) return null;
 
   return (
-    <section
-      key={section._id || section.id || slug}
-      style={{ marginBottom: 32 }}
-      dangerouslySetInnerHTML={{ __html: htmlContent }}
-    />
+    <>
+      <section
+        key={section._id || section.id || slug}
+        style={{ marginBottom: 32 }}
+        dangerouslySetInnerHTML={{ __html: htmlContent }}
+      />
+      {pageCss ? <style>{pageCss}</style> : null}
+      {pageJavascript ? (
+        <script dangerouslySetInnerHTML={{ __html: pageJavascript }} />
+      ) : null}
+    </>
   );
 }
 

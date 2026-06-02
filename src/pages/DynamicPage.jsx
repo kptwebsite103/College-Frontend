@@ -1,8 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { listMenus, getPageBySlug } from '../api/resources.js';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from "react-i18next";
+
+function normalizeRoutePath(pathname = "") {
+  const raw = String(pathname || "").trim();
+  if (!raw || raw === "/") return "/";
+
+  let decoded = raw;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch (_error) {
+    decoded = raw;
+  }
+
+  const normalizedSegments = String(decoded)
+    .replace(/\\/g, "/")
+    .split("/")
+    .filter(Boolean)
+    .map((segment) =>
+      segment
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, ""),
+    )
+    .filter(Boolean);
+
+  return normalizedSegments.length > 0 ? `/${normalizedSegments.join("/")}` : "/";
+}
+
+function normalizeComparableRoute(value = "") {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (
+    /^(?:https?:)?\/\//i.test(text) ||
+    /^(?:mailto:|tel:|data:|blob:)/i.test(text) ||
+    /^#/i.test(text)
+  ) {
+    return "";
+  }
+  return normalizeRoutePath(text);
+}
 
 function getLocalePageContent(content, locale) {
   const value = content && typeof content === 'object' ? content[locale] : null;
@@ -19,7 +59,6 @@ function getLocalePageContent(content, locale) {
 }
 
 export default function DynamicPage() {
-  const { route, parentRoute, childRoute, grandChildRoute } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { currentLanguage } = useLanguage();
@@ -28,24 +67,11 @@ export default function DynamicPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Build the full route path
-  const buildRoutePath = () => {
-    if (grandChildRoute) {
-      return `/${parentRoute}/${childRoute}/${grandChildRoute}`;
-    } else if (childRoute) {
-      return `/${parentRoute}/${childRoute}`;
-    } else if (parentRoute) {
-      return `/${parentRoute}`;
-    } else {
-      return `/${route}`;
-    }
-  };
-
-  const currentRoute = buildRoutePath();
+  const currentRoute = normalizeRoutePath(location.pathname);
 
   useEffect(() => {
     loadPageData();
-  }, [parentRoute, childRoute, grandChildRoute, route]);
+  }, [currentRoute]);
 
   useEffect(() => {
     // Scroll to top when page loads
@@ -92,7 +118,14 @@ export default function DynamicPage() {
       // Find the menu item that matches this route
       const findMenuItem = (menuList, targetRoute) => {
         for (const menu of menuList) {
-          if (menu.url_en === targetRoute || menu.link === targetRoute) {
+          const menuRoutes = [
+            menu?.url_en,
+            menu?.link,
+            menu?.url,
+            menu?.path,
+            menu?.route,
+          ].map(normalizeComparableRoute);
+          if (menuRoutes.some((route) => route && route === targetRoute)) {
             return menu;
           }
           if (menu.children && menu.children.length > 0) {

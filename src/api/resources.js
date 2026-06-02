@@ -37,6 +37,17 @@ export function listPublicAnnouncements(params = {}) {
   return apiRequest(`/api/pages/public/announcements${suffix}`);
 }
 
+function normalizePageSlugPath(slug) {
+  return String(slug || "")
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/^\/+|\/+$/g, "")
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+}
+
 export function createHomeSection(sectionData) {
   return apiRequest("/api/home-sections", {
     method: "POST",
@@ -58,7 +69,8 @@ export function deleteHomeSection(sectionId) {
 }
 
 export function getPageBySlug(slug) {
-  return apiRequest(`/api/pages/slug/${slug}`);
+  const path = normalizePageSlugPath(slug);
+  return apiRequest(path ? `/api/pages/slug/${path}` : "/api/pages/slug");
 }
 
 export function createPage(pageData) {

@@ -167,34 +167,15 @@ export default function App() {
         }
       />
 
-      {/* Dynamic Routes for Custom Navbar Pages */}
+      {/* Dynamic Routes for Custom Pages and Menu Links */}
       <Route
-        path="/:parentRoute/:childRoute"
+        path="*"
         element={
           <PublicLayoutWrapper>
             <DynamicPage />
           </PublicLayoutWrapper>
         }
       />
-      <Route
-        path="/:parentRoute/:childRoute/:grandChildRoute"
-        element={
-          <PublicLayoutWrapper>
-            <DynamicPage />
-          </PublicLayoutWrapper>
-        }
-      />
-      <Route
-        path="/:route"
-        element={
-          <PublicLayoutWrapper>
-            <DynamicPage />
-          </PublicLayoutWrapper>
-        }
-      />
-
-      {/* 404 Route */}
-      <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>
   );
 }
